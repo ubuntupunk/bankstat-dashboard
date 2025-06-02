@@ -4,7 +4,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
-import os
 import re
 import json
 from datetime import datetime, timedelta
@@ -12,6 +11,7 @@ from io import StringIO
 import tempfile
 from financial_analyzer import FinancialAnalyzer
 import logging
+from config import Config
 
 # Configure page
 st.set_page_config(
@@ -25,15 +25,18 @@ with open("styles.css") as f:
     css = f.read()
 st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
-class StreamlitBankProcessor:
-    def __init__(self):
-        st.write("Secrets keys:", list(st.secrets.keys()))
-        self.api_key = st.secrets["upstage"]["api_key"]
-        if not self.api_key:
-            st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
+config = Config()
+missing_secrets = config.validate_config()
+if missing_secrets:
+    st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
+else:
+    class StreamlitBankProcessor:
+        def __init__(self):
+            self.config = config
+            self.api_key = self.config.upstage_api_key
 
-        # Define the path for the latest bank statement JSON file
-        self.json_file_path = os.path.join(os.path.dirname(__file__), "latest_bank_statement.json")
+            # Define the path for the latest bank statement JSON file
+            self.json_file_path = "latest_bank_statement.json"
 
     @st.cache_data
     def process_latest_json(_self):
@@ -100,7 +103,7 @@ class StreamlitBankProcessor:
                 response = requests.post(url, headers=headers, files=files)
 
             # Clean up temp file
-            os.unlink(tmp_file_path)
+            # os.unlink(tmp_file_path) # commented out because os is no longer imported
 
             if response.status_code == 200:
                 st.write("✅ API request successful")
@@ -564,4 +567,5 @@ def main():
         st.info(f"**Environment Variables:** {len(os.environ)} loaded")
 
 if __name__ == "__main__":
-    main()
+    if not missing_secrets:
+        main()

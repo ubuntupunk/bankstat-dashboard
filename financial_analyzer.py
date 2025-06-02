@@ -5,21 +5,17 @@ from typing import Dict, List, Tuple, Optional
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import streamlit as st
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+from config import Config
 
 class FinancialAnalyzer:
     def __init__(self, base_analyzer):
         self.analyzer = base_analyzer
         self.log_file = open("financial_analyzer.log", "a")
-        self.db_password = st.secrets["database"]["db_password"]
-        
-        if not self.db_password:
-            st.error("⚠️ DB_PASSWORD not found in environment variables")
-        self.uri = f"mongodb+srv://ubuntupunk:{self.db_password}@{st.secrets['database']['mongodb_url']}"
-        if not self.uri:
-            st.error("⚠️ MONGODB_URL not found in environment variables")
+        self.config = Config()
+        self.db_password = self.config.db_password
+        self.uri = f"mongodb+srv://ubuntupunk:{self.db_password}@{self.config.mongodb_url}"
         self._log("initialising FinancialAnalyser...")
     
     def _log(self, message):
@@ -118,10 +114,8 @@ class FinancialAnalyzer:
             self._log("Connected to database")
             return db["statements"]
         except Exception as e:
-            st.error(f"❌ MongoDB upload failed: {str(e)}")
+            print(f"❌ MongoDB upload failed: {str(e)}")
             self._log(f"Error connecting to database: {str(e)}")
-            debug.container.exception(e)
-            debug.container.write("Please check your MongoDB connection settings and try again")
             raise
 
     def _categorize_transaction(self, description: str) -> str:
