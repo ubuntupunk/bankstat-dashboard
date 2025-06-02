@@ -12,8 +12,6 @@ from io import StringIO
 import tempfile
 from financial_analyzer import FinancialAnalyzer
 import logging
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
 
 # Configure page
 st.set_page_config(
@@ -29,16 +27,19 @@ st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 class StreamlitBankProcessor:
     def __init__(self):
-        st.write("Secrets keys:", list(st.secrets.keys()))
+       # st.write("Secrets keys:", list(st.secrets.keys()))
         self.api_key = st.secrets["upstage"]["api_key"]
         if not self.api_key:
             st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
+        
+        # Define the path for the latest bank statement JSON file
+        self.json_file_path = os.path.join(os.path.dirname(__file__), "latest_bank_statement.json")
 
     def process_latest_json(self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:
-            if os.path.exists("latest_bank_statement.json"):
-                with open("latest_bank_statement.json", "r") as f:
+            if os.path.exists(self.json_file_path):
+                with open(self.json_file_path, "r") as f:
                     json_data = json.load(f)
 
                 df = self.extract_tables_to_dataframe(json_data)
@@ -67,13 +68,13 @@ class StreamlitBankProcessor:
                     st.info("No tables found in the latest JSON data.")
                     return pd.DataFrame()
             else:
-                st.info("No bank statement JSON found. Please upload and process a bank statement first.")
+                st.info(f"No bank statement JSON found at {self.json_file_path}. Please upload and process a bank statement first.")
                 return pd.DataFrame()
         except json.JSONDecodeError:
-            st.error("Error decoding latest_bank_statement.json. File might be corrupted.")
+            st.error(f"Error decoding {self.json_file_path}. File might be corrupted.")
             return pd.DataFrame()
         except Exception as e:
-            st.error(f"Error loading latest JSON data: {str(e)}")
+            st.error(f"Error loading latest JSON data from {self.json_file_path}: {str(e)}")
             return pd.DataFrame()
 
     def process_pdf(self, uploaded_file):
@@ -149,6 +150,7 @@ class StreamlitBankProcessor:
 
             if all_tables:
                 combined_df = pd.concat(all_tables, ignore_index=True)
+                combined_df.columns = combined_df.columns.astype(str) # Ensure all column names are strings
                 
                 # --- Start: Logic to find and process Balance/Running Total ---
                 # Find the balance column (case-insensitive, flexible matching)
@@ -415,56 +417,44 @@ def main():
 
                                 with col3:
                                     if st.button("💾 Save to Database"):
+                                        # Upload to MongoDB with detailed debug output
+                                        debug_container = st.container()
+                                        debug_container.subheader("MongoDB Upload Debug")
+                                        
                                         with st.spinner("Saving data..."):
-                                            # Save to a local JSON file for demonstration
-                                            with open("latest_bank_statement.json", "w") as f:
-                                                json.dump(json_data, f, indent=2)
-                                            st.success("✅ Saved to local file!")
+                                            # Clear previous debug messages
+                                            debug_container.empty()
 
-                                            # Upload to MongoDB with detailed debug output
-                                            debug_container = st.container()
-                                            with debug_container:
-                                                st.subheader("MongoDB Upload Debug")
-                                                st.write("🛢️ Starting MongoDB upload process...")
+                                            # Save to a local JSON file for demonstration
+                                            with open(self.json_file_path, "w") as f:
+                                                json.dump(json_data, f, indent=2)
+                                            st.success(f"✅ Saved to local file: {self.json_file_path}!")
+
+                                            debug_container.write("🛢️ Starting MongoDB upload process...")
                                                 
-                                                try:
-                                                    # Show connection details
-                                                    st.write("🔑 Retrieving MongoDB credentials...")
-                                                    db_password = st.secrets["mongodb"]["db_password"]
-                                                    mongo_url = st.secrets["mongodb"]["mongo_url"]
-                                                    uri = f"mongodb+srv://ubuntupunk:{db_password}@{mongo_url}"
-                                                    st.write("🔗 MongoDB URI (truncated):", uri[:20] + "...")
-                                                    
-                                                    # Connection attempt
-                                                    st.write("🔌 Attempting to connect to MongoDB...")
-                                                    client = MongoClient(uri, server_api=ServerApi('1'))
-                                                    st.write("✅ MongoDB client connected successfully")
-                                                    
-                                                    # Database operations
-                                                    st.write("📂 Accessing database...")
-                                                    db = client["bankstat"]
-                                                    collection = db["statements"]
-                                                    st.write(f"📄 Using collection: {collection.name}")
-                                                    
-                                                    # Document insertion
-                                                    st.write("📝 Preparing to insert document...")
-                                                    st.write(f"📊 Document size: {len(json.dumps(json_data)):,} bytes")
-                                                    st.write("⏳ Inserting document...")
-                                                    result = collection.insert_one(json_data)
-                                                    st.write(f"📌 Success! Inserted document ID: {result.inserted_id}")
-                                                    st.write(f"📊 Collection now has {collection.count_documents({})} documents")
-                                                    
-                                                    st.success("✅ Data uploaded to MongoDB successfully!")
-                                                    
-                                                    # Cleanup
-                                                    st.write("🔌 Closing MongoDB connection...")
-                                                    client.close()
-                                                    st.write("✅ MongoDB connection closed")
-                                                except Exception as e:
-                                                    st.error("❌ MongoDB upload failed!")
-                                                    st.write("🛠️ Error details:")
-                                                    st.exception(e)
-                                                    st.write("Please check your MongoDB connection settings and try again")
+                                            try:
+                                                debug_container.write("🔌 Attempting to connect to MongoDB via FinancialAnalyzer...")
+                                                collection = analyzer.connect_to_db()
+                                                debug_container.write("✅ MongoDB connection successful via FinancialAnalyzer")
+                                                debug_container.write(f"📄 Connected to collection: {collection.name}")
+                                                
+                                                debug_container.write("📝 Preparing to insert document...")
+                                                debug_container.write(f"📊 Document size: {len(json.dumps(json_data)):,} bytes")
+                                                debug_container.write("⏳ Inserting document...")
+                                                result = collection.insert_one(json_data)
+                                                debug_container.write(f"📌 Success! Inserted document ID: {result.inserted_id}")
+                                                debug_container.write(f"📊 Collection now has {collection.count_documents({})} documents")
+                                                
+                                                st.success("✅ Data uploaded to MongoDB successfully!")
+                                                
+                                                # Note: FinancialAnalyzer's connect_to_db returns the collection,
+                                                # so explicit client.close() is not directly managed here.
+                                                # The connection is typically managed by the MongoClient instance.
+                                            except Exception as e:
+                                                st.error("❌ MongoDB upload failed!")
+                                                debug_container.write("🛠️ Error details:")
+                                                debug_container.exception(e)
+                                                debug_container.write("Please check your MongoDB connection settings and try again")
                             else:
                                 st.warning("⚠️ No tables found in the PDF")
                         else:

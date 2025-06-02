@@ -6,12 +6,28 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import streamlit as st
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 class FinancialAnalyzer:
-    """Enhanced financial analyzer with better error handling and additional features"""
-    
     def __init__(self, base_analyzer):
         self.analyzer = base_analyzer
+        self.log_file = open("financial_analyzer.log", "a")
+        self.db_password = st.secrets["database"]["db_password"]
+        
+        if not self.db_password:
+            st.error("⚠️ DB_PASSWORD not found in environment variables")
+        self.uri = f"mongodb+srv://ubuntupunk:{self.db_password}@{st.secrets['database']['mongodb_url']}"
+        if not self.uri:
+            st.error("⚠️ MONGODB_URL not found in environment variables")
+        self._log("initialising FinancialAnalyser...")
+    
+    def _log(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"[{timestamp}] {message}"
+        self.log_file.write(f"{log_message}\n")
+        self.log_file.flush()
+        print(log_message)
     
     def get_transaction_summary(self) -> Dict:
         """Generate comprehensive transaction summary from the base analyzer's data"""
@@ -92,7 +108,12 @@ class FinancialAnalyzer:
                 'net_flow': 0,
                 'transaction_count': 0
             }
-    
+
+    def connect_to_db(self):
+        client = MongoClient(self.uri, server_api=ServerApi('1'))
+        db = client["bankstat"]
+        return db["statements"]
+
     def _categorize_transaction(self, description: str) -> str:
         """Simple transaction categorization based on description keywords"""
         description_lower = str(description).lower()
