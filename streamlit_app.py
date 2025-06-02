@@ -12,94 +12,56 @@ from io import StringIO
 import tempfile
 from financial_analyzer import FinancialAnalyzer
 import logging
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 # Configure page
 st.set_page_config(
-    page_title="Bankstat Dashboard", 
+    page_title="Bankstat Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #2E8B57;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #2E8B57;
-        margin: 0.5rem 0;
-    }
-    .upload-area {
-        border: 2px dashed #2E8B57;
-        border-radius: 10px;
-        padding: 2rem;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    .status-success {
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-        color: #155724;
-        padding: 0.75rem;
-        border-radius: 0.25rem;
-        border: 1px solid;
-    }
-    .status-error {
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-        color: #721c24;
-        padding: 0.75rem;
-        border-radius: 0.25rem;
-        border: 1px solid;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Import CSS from external file
+with open("styles.css") as f:
+    css = f.read()
+st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 class StreamlitBankProcessor:
     def __init__(self):
-        #st.write("UPSTAGE API:", st.secrets["upstage.api_key"])
         st.write("Secrets keys:", list(st.secrets.keys()))
-        # self.api_key = os.getenv("UPSTAGE_API_KEY")
-        self.api_key = st.secrets["upstage"]["api_key"]       
+        self.api_key = st.secrets["upstage"]["api_key"]
         if not self.api_key:
             st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
-        
+
     def process_latest_json(self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:
             if os.path.exists("latest_bank_statement.json"):
                 with open("latest_bank_statement.json", "r") as f:
                     json_data = json.load(f)
-                
+
                 df = self.extract_tables_to_dataframe(json_data)
                 if not df.empty:
                     # Ensure 'date' column is datetime and handle missing 'debits'/'credits'
                     if 'date' in df.columns:
                         df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                    
+
                     # Fill NaN in 'debits' and 'credits' with 0
                     if 'debits' not in df.columns:
                         df['debits'] = 0.0
                     else:
                         df['debits'] = pd.to_numeric(df['debits'], errors='coerce').fillna(0.0)
-                    
+
                     if 'credits' not in df.columns:
                         df['credits'] = 0.0
                     else:
                         df['credits'] = pd.to_numeric(df['credits'], errors='coerce').fillna(0.0)
-                    
+
                     # Add 'category' column if not exists
                     if 'category' not in df.columns:
                         df['category'] = 'Uncategorized'
-                    
+
                     return df
                 else:
                     st.info("No tables found in the latest JSON data.")
@@ -121,40 +83,47 @@ class StreamlitBankProcessor:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
                 tmp_file_path = tmp_file.name
-            
+
             # Call Upstage API
+            st.write("📄 Starting PDF processing...")
+            st.write(f"📂 Temporary file created at: {tmp_file_path}")
             url = 'https://api.upstage.ai/v1/document-ai/document-parse'
             headers = {"Authorization": f"Bearer {self.api_key}"}
-            
+            st.write("🔗 API endpoint:", url)
+            st.write("🔑 Using API key (truncated):", self.api_key[:4] + "..." + self.api_key[-4:])
+
             with open(tmp_file_path, "rb") as file:
                 files = {"document": file}
                 response = requests.post(url, headers=headers, files=files)
-            
+
             # Clean up temp file
             os.unlink(tmp_file_path)
-            
+
             if response.status_code == 200:
+                st.write("✅ API request successful")
+                st.write(f"⏱️ Response time: {response.elapsed.total_seconds():.2f}s")
                 data = response.json()
-                
+                st.write("📊 Extracted data keys:", list(data.keys()))
+
                 # Parse filename for date range
                 filename = uploaded_file.name
                 start_date, end_date = self.parse_pdf_name(filename)
-                
+
                 data["filename"] = filename
                 data["period"] = {
                     "start": start_date.strftime('%Y-%m-%d') if start_date else None,
                     "end": end_date.strftime('%Y-%m-%d') if end_date else None
                 }
-                
+
                 return data
             else:
                 st.error(f"API request failed: {response.status_code} - {response.text}")
                 return None
-                
+
         except Exception as e:
             st.error(f"Error processing PDF: {str(e)}")
             return None
-    
+
     def parse_pdf_name(self, pdf_name):
         """Parse date range from PDF filename"""
         pattern = r'(\d{2}\s\w{3}\s\d{4})\s-\s(\d{2}\s\w{3}\s\d{4})\.pdf'
@@ -164,7 +133,7 @@ class StreamlitBankProcessor:
             end_date = datetime.strptime(match.group(2), '%d %b %Y')
             return start_date, end_date
         return None, None
-    
+
     def extract_tables_to_dataframe(self, json_data):
         """Extract tables from JSON data and convert to DataFrame"""
         try:
@@ -177,9 +146,62 @@ class StreamlitBankProcessor:
                         if isinstance(df.columns, pd.MultiIndex):
                             df.columns = df.columns.map('_'.join)
                         all_tables.append(df)
-            
+
             if all_tables:
                 combined_df = pd.concat(all_tables, ignore_index=True)
+                
+                # --- Start: Logic to find and process Balance/Running Total ---
+                # Find the balance column (case-insensitive, flexible matching)
+                balance_col = None
+                for col in combined_df.columns:
+                    if isinstance(col, str) and ('balance' in col.lower() or 'saldo' in col.lower()):
+                        balance_col = col
+                        break
+
+                if balance_col:
+                    # Clean and convert balance column to numeric
+                    try:
+                        combined_df['balance'] = combined_df[balance_col].astype(str).str.replace(r'[^\d.,-]', '', regex=True).str.replace(',', '', regex=True)
+                        # Handle potential multiple decimal points if comma was used as decimal separator
+                        if combined_df['balance'].str.count(r'\.').max() > 1:
+                             combined_df['balance'] = combined_df['balance'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False) # Assuming comma was decimal
+                        combined_df['balance'] = pd.to_numeric(combined_df['balance'], errors='coerce').fillna(0.0)
+                        
+                        # Ensure date column is datetime and sort for running total
+                        if 'date' in combined_df.columns:
+                             combined_df['date'] = pd.to_datetime(combined_df['date'], errors='coerce')
+                             combined_df = combined_df.sort_values('date')
+                             
+                             # Calculate running total if needed (optional, based on typical bank statements)
+                             # This assumes the first balance is the starting point.
+                             # If the balance column is already a running balance, this might be redundant.
+                             # Keeping it simple for now by just ensuring the 'balance' column is present and numeric.
+                             # If a separate 'running_total' is required, more complex logic is needed.
+                             
+                    except Exception as e:
+                        st.warning(f"Could not process balance column '{balance_col}': {str(e)}")
+                        combined_df['balance'] = 0.0 # Add a default balance column
+
+                else:
+                    st.warning("Balance column not found in extracted tables.")
+                    combined_df['balance'] = 0.0 # Add a default balance column if not found
+                # --- End: Logic to find and process Balance/Running Total ---
+
+                # Ensure debits and credits are numeric after potential concatenation issues
+                if 'debits' in combined_df.columns:
+                    combined_df['debits'] = pd.to_numeric(combined_df['debits'], errors='coerce').fillna(0.0)
+                else:
+                    combined_df['debits'] = 0.0
+
+                if 'credits' in combined_df.columns:
+                    combined_df['credits'] = pd.to_numeric(combined_df['credits'], errors='coerce').fillna(0.0)
+                else:
+                    combined_df['credits'] = 0.0
+
+                # Add 'category' column if not exists (already present, but good to ensure)
+                if 'category' not in combined_df.columns:
+                    combined_df['category'] = 'Uncategorized'
+
                 return combined_df
             return pd.DataFrame()
             
@@ -190,7 +212,7 @@ class StreamlitBankProcessor:
 def create_dashboard_metrics(analyzer, start_date, end_date):
     """Create key financial metrics display"""
     col1, col2, col3, col4 = st.columns(4)
-    
+
     try:
         # Get transaction summary
         summary = analyzer.get_transaction_summary()
@@ -202,24 +224,24 @@ def create_dashboard_metrics(analyzer, start_date, end_date):
             start_date.strftime("%Y-%m-%d"),
             end_date.strftime("%Y-%m-%d")
         )
-        
+
         with col1:
             total_income = summary.get('total_credits', 0)
             st.metric("💰 Total Income", f"R {total_income:,.2f}")
-            
+
         with col2:
             total_expenses = summary.get('total_debits', 0)
             st.metric("💸 Total Expenses", f"R {total_expenses:,.2f}")
-            
+
         with col3:
             net_flow = total_income - total_expenses
-            st.metric("📊 Net Flow", f"R {net_flow:,.2f}", 
+            st.metric("📊 Net Flow", f"R {net_flow:,.2f}",
                      delta=f"{'Positive' if net_flow > 0 else 'Negative'}")
-            
+
         with col4:
             avg_balance = balance_data.get('average_balance', 0)
             st.metric("🏦 Avg Balance", f"R {avg_balance:,.2f}")
-            
+
     except Exception as e:
         st.error(f"Error calculating metrics: {str(e)}")
 
@@ -230,24 +252,24 @@ def create_expense_breakdown_chart(summary_data):
         if not expense_types:
             st.warning("No expense data available")
             return
-        
+
         # Convert to DataFrame for plotting
         categories = []
         amounts = []
-        
+
         for category, data in expense_types.items():
             if isinstance(data, dict) and 'debits' in data:
                 debits = data['debits']
                 if debits > 0:  # Only show expenses (debits)
                     categories.append(category)
                     amounts.append(debits)
-        
+
         if categories and amounts:
             df_expenses = pd.DataFrame({
                 'Category': categories,
                 'Amount': amounts
             })
-            
+
             # Create pie chart
             fig = px.pie(df_expenses, values='Amount', names='Category',
                         title="Expense Breakdown by Category",
@@ -256,7 +278,7 @@ def create_expense_breakdown_chart(summary_data):
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No expense data to display")
-            
+
     except Exception as e:
         st.error(f"Error creating expense chart: {str(e)}")
 
@@ -267,18 +289,18 @@ def create_cash_flow_chart(summary_data):
         if not daily_flow:
             st.warning("No daily flow data available")
             return
-        
+
         # Convert to DataFrame
         dates = []
         debits = []
         credits = []
-        
+
         for date_str, data in daily_flow.items():
             if isinstance(data, dict):
                 dates.append(pd.to_datetime(date_str))
                 debits.append(data.get('debits', 0))
                 credits.append(data.get('credits', 0))
-        
+
         if dates:
             df_flow = pd.DataFrame({
                 'Date': dates,
@@ -286,7 +308,7 @@ def create_cash_flow_chart(summary_data):
                 'Income': credits
             })
             df_flow = df_flow.sort_values('Date')
-            
+
             # Create line chart
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df_flow['Date'], y=df_flow['Income'],
@@ -295,34 +317,34 @@ def create_cash_flow_chart(summary_data):
             fig.add_trace(go.Scatter(x=df_flow['Date'], y=df_flow['Expenses'],
                                    mode='lines+markers', name='Expenses',
                                    line=dict(color='red')))
-            
+
             fig.update_layout(title="Daily Cash Flow",
                             xaxis_title="Date",
                             yaxis_title="Amount (R)",
                             hovermode='x unified')
-            
+
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No cash flow data to display")
-            
+
     except Exception as e:
         st.error(f"Error creating cash flow chart: {str(e)}")
 
 def main():
     # Header
     st.markdown('<h1 class="main-header">🏦 Bankstat Dashboard</h1>', unsafe_allow_html=True)
-    
+
     # Sidebar
     with st.sidebar:
         st.image("bankstatgreen.png", use_container_width=True)
         st.header("Navigation")
-        
+
         # Tab selection
         tab_selection = st.radio(
             "Choose Action:",
             ["📊 View Dashboard", "📁 Upload & Process", "⚙️ Settings"]
         )
-        
+
         # Date range selection
         st.header("Date Range")
         col1, col2 = st.columns(2)
@@ -330,14 +352,14 @@ def main():
             start_date = st.date_input("From", datetime.now() - timedelta(days=30))
         with col2:
             end_date = st.date_input("To", datetime.now())
-    
+
     # Initialize components
     processor = StreamlitBankProcessor()
-    analyzer = FinancialAnalyzer(base_analyzer=processor,)
-    
+    analyzer = FinancialAnalyzer(base_analyzer=processor) # Initialize with base_analyzer
+
     if tab_selection == "📁 Upload & Process":
         st.header("📁 Upload Bank Statement")
-        
+
         # File upload section
         st.markdown('<div class="upload-area">', unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
@@ -346,31 +368,31 @@ def main():
             help="Upload a PDF bank statement to process and analyze"
         )
         st.markdown('</div>', unsafe_allow_html=True)
-        
+
         if uploaded_file is not None:
             col1, col2 = st.columns([2, 1])
-            
+
             with col1:
                 st.info(f"📄 File: {uploaded_file.name}")
                 st.info(f"📏 Size: {uploaded_file.size:,} bytes")
-            
+
             with col2:
                 if st.button("🚀 Process PDF", type="primary"):
                     with st.spinner("Processing PDF... This may take a moment..."):
                         # Process the PDF
                         json_data = processor.process_pdf(uploaded_file)
-                        
+
                         if json_data:
                             st.success("✅ PDF processed successfully!")
-                            
+
                             # Display extracted data
                             st.subheader("📊 Extracted Data Preview")
-                            
+
                             # Extract tables
                             df = processor.extract_tables_to_dataframe(json_data)
                             if not df.empty:
                                 st.dataframe(df.head(10), use_container_width=True)
-                                
+
                                 # Download options
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
@@ -381,7 +403,7 @@ def main():
                                         f"{uploaded_file.name.replace('.pdf', '.csv')}",
                                         "text/csv"
                                     )
-                                
+
                                 with col2:
                                     json_str = json.dumps(json_data, indent=2)
                                     st.download_button(
@@ -390,28 +412,53 @@ def main():
                                         f"{uploaded_file.name.replace('.pdf', '.json')}",
                                         "application/json"
                                     )
-                                
+
                                 with col3:
                                     if st.button("💾 Save to Database"):
                                         # Save to a local JSON file for demonstration
                                         with open("latest_bank_statement.json", "w") as f:
                                             json.dump(json_data, f, indent=2)
-                                        st.success("✅ Saved to database (local file)!")
+                                        st.success("✅ Saved to local file!")
+
+                                        # Upload to MongoDB
+                                        try:
+                                            st.write("🛢️ Starting MongoDB upload...")
+                                            db_password = st.secrets["mongodb"]["db_password"]
+                                            mongo_url = st.secrets["mongodb"]["mongo_url"]
+                                            uri = f"mongodb+srv://ubuntupunk:{db_password}@{mongo_url}"
+                                            st.write("🔗 MongoDB URI (truncated):", uri[:20] + "...")
+                                            
+                                            client = MongoClient(uri, server_api=ServerApi('1'))
+                                            st.write("🔌 MongoDB client connected")
+                                            
+                                            db = client["bankstat"]
+                                            collection = db["statements"]
+                                            st.write(f"📂 Using collection: {collection.name}")
+                                            
+                                            st.write("📝 Inserting document...")
+                                            result = collection.insert_one(json_data)
+                                            st.write(f"📌 Inserted document ID: {result.inserted_id}")
+                                            
+                                            st.success("✅ Data uploaded to MongoDB!")
+                                            client.close()
+                                            st.write("🔌 MongoDB connection closed")
+                                        except Exception as e:
+                                            st.error(f"Error uploading to MongoDB: {str(e)}")
                             else:
                                 st.warning("⚠️ No tables found in the PDF")
                         else:
                             st.error("❌ Failed to process PDF")
-    
+
     elif tab_selection == "📊 View Dashboard":
         st.header("📊 Financial Dashboard")
-        
+
         # Key Metrics
         st.subheader("📈 Key Metrics")
         create_dashboard_metrics(analyzer, start_date, end_date)
-        
+
         # Charts section
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.subheader("💰 Expense Breakdown")
             try:
@@ -419,7 +466,7 @@ def main():
                 create_expense_breakdown_chart(summary_data)
             except Exception as e:
                 st.error(f"Error loading expense data: {str(e)}")
-        
+
         with col2:
             st.subheader("📊 Cash Flow Trend")
             try:
@@ -427,11 +474,11 @@ def main():
                 create_cash_flow_chart(summary_data)
             except Exception as e:
                 st.error(f"Error loading cash flow data: {str(e)}")
-        
+
         # Transaction details
         st.subheader("💳 Recent Transactions")
         try:
-            # Get latest transactions
+            # Get latest transactions using FinancialAnalyzer's method
             transactions_df = analyzer.process_latest_json()
             if not transactions_df.empty:
                 # Filter by date range
@@ -439,40 +486,40 @@ def main():
                     (transactions_df['date'] >= pd.to_datetime(start_date)) &
                     (transactions_df['date'] <= pd.to_datetime(end_date))
                 ]
-                
+
                 # Display top 20 transactions
-                display_df = filtered_df.head(20)[['date', 'description', 'debits', 'credits', 'category']]
+                display_df = filtered_df.head(20)[['date', 'description', 'debits', 'credits', 'balance', 'category']]
                 st.dataframe(display_df, use_container_width=True)
-                
+
                 # Show uncategorized transactions
                 uncategorized = filtered_df[filtered_df['category'] == 'Uncategorized']
                 if not uncategorized.empty:
                     st.warning(f"⚠️ {len(uncategorized)} uncategorized transactions found")
                     with st.expander("View Uncategorized Transactions"):
-                        st.dataframe(uncategorized[['date', 'description', 'debits', 'credits']])
+                        st.dataframe(uncategorized[['date', 'description', 'debits', 'credits', 'balance']])
             else:
                 st.info("No transaction data available. Please upload and process a bank statement first.")
-                
+
         except Exception as e:
             st.error(f"Error loading transactions: {str(e)}")
-    
+
     elif tab_selection == "⚙️ Settings":
         st.header("⚙️ Settings")
-        
+
         # Category management
         st.subheader("🏷️ Category Management")
-        
+
         col1, col2 = st.columns(2)
         with col1:
             new_term = st.text_input("Transaction Term", placeholder="e.g., 'netflix'")
             new_category = st.text_input("Category", placeholder="e.g., 'Entertainment'")
-        
+
         with col2:
             category_type = st.selectbox(
                 "Category Type",
                 ['Necessary Expenses', 'Discretionary Expenses', 'Investment Spending', 'Income', 'Notices', 'Special']
             )
-        
+
         if st.button("➕ Add Category Mapping"):
             if new_term and new_category:
                 try:
@@ -482,20 +529,20 @@ def main():
                     st.error(f"Error adding mapping: {str(e)}")
             else:
                 st.error("Please fill in both term and category")
-        
+
         # API Configuration
         st.subheader("🔑 API Configuration")
         current_api_key = st.text_input(
-            "Upstage API Key", 
-            value=processor.api_key or "", 
+            "Upstage API Key",
+            value=processor.api_key or "",
             type="password",
             help="Your Upstage Document AI API key"
         )
-        
+
         if st.button("💾 Save API Key"):
             # In a real app, you'd save this securely
             st.success("✅ API key updated")
-        
+
         # System Information
         st.subheader("ℹ️ System Information")
         st.info(f"**Current Directory:** {os.getcwd()}")
