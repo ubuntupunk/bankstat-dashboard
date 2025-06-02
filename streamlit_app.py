@@ -415,35 +415,56 @@ def main():
 
                                 with col3:
                                     if st.button("💾 Save to Database"):
-                                        # Save to a local JSON file for demonstration
-                                        with open("latest_bank_statement.json", "w") as f:
-                                            json.dump(json_data, f, indent=2)
-                                        st.success("✅ Saved to local file!")
+                                        with st.spinner("Saving data..."):
+                                            # Save to a local JSON file for demonstration
+                                            with open("latest_bank_statement.json", "w") as f:
+                                                json.dump(json_data, f, indent=2)
+                                            st.success("✅ Saved to local file!")
 
-                                        # Upload to MongoDB
-                                        try:
-                                            st.write("🛢️ Starting MongoDB upload...")
-                                            db_password = st.secrets["mongodb"]["db_password"]
-                                            mongo_url = st.secrets["mongodb"]["mongo_url"]
-                                            uri = f"mongodb+srv://ubuntupunk:{db_password}@{mongo_url}"
-                                            st.write("🔗 MongoDB URI (truncated):", uri[:20] + "...")
-                                            
-                                            client = MongoClient(uri, server_api=ServerApi('1'))
-                                            st.write("🔌 MongoDB client connected")
-                                            
-                                            db = client["bankstat"]
-                                            collection = db["statements"]
-                                            st.write(f"📂 Using collection: {collection.name}")
-                                            
-                                            st.write("📝 Inserting document...")
-                                            result = collection.insert_one(json_data)
-                                            st.write(f"📌 Inserted document ID: {result.inserted_id}")
-                                            
-                                            st.success("✅ Data uploaded to MongoDB!")
-                                            client.close()
-                                            st.write("🔌 MongoDB connection closed")
-                                        except Exception as e:
-                                            st.error(f"Error uploading to MongoDB: {str(e)}")
+                                            # Upload to MongoDB with detailed debug output
+                                            debug_container = st.container()
+                                            with debug_container:
+                                                st.subheader("MongoDB Upload Debug")
+                                                st.write("🛢️ Starting MongoDB upload process...")
+                                                
+                                                try:
+                                                    # Show connection details
+                                                    st.write("🔑 Retrieving MongoDB credentials...")
+                                                    db_password = st.secrets["mongodb"]["db_password"]
+                                                    mongo_url = st.secrets["mongodb"]["mongo_url"]
+                                                    uri = f"mongodb+srv://ubuntupunk:{db_password}@{mongo_url}"
+                                                    st.write("🔗 MongoDB URI (truncated):", uri[:20] + "...")
+                                                    
+                                                    # Connection attempt
+                                                    st.write("🔌 Attempting to connect to MongoDB...")
+                                                    client = MongoClient(uri, server_api=ServerApi('1'))
+                                                    st.write("✅ MongoDB client connected successfully")
+                                                    
+                                                    # Database operations
+                                                    st.write("📂 Accessing database...")
+                                                    db = client["bankstat"]
+                                                    collection = db["statements"]
+                                                    st.write(f"📄 Using collection: {collection.name}")
+                                                    
+                                                    # Document insertion
+                                                    st.write("📝 Preparing to insert document...")
+                                                    st.write(f"📊 Document size: {len(json.dumps(json_data)):,} bytes")
+                                                    st.write("⏳ Inserting document...")
+                                                    result = collection.insert_one(json_data)
+                                                    st.write(f"📌 Success! Inserted document ID: {result.inserted_id}")
+                                                    st.write(f"📊 Collection now has {collection.count_documents({})} documents")
+                                                    
+                                                    st.success("✅ Data uploaded to MongoDB successfully!")
+                                                    
+                                                    # Cleanup
+                                                    st.write("🔌 Closing MongoDB connection...")
+                                                    client.close()
+                                                    st.write("✅ MongoDB connection closed")
+                                                except Exception as e:
+                                                    st.error("❌ MongoDB upload failed!")
+                                                    st.write("🛠️ Error details:")
+                                                    st.exception(e)
+                                                    st.write("Please check your MongoDB connection settings and try again")
                             else:
                                 st.warning("⚠️ No tables found in the PDF")
                         else:
