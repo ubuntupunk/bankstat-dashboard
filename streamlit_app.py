@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timedelta
 from io import StringIO
 import tempfile
-from enhanced_financial_analyzer import FinancialAnalyzer
+from financial_analyzer import FinancialAnalyzer
 import logging
 
 # Configure page
@@ -291,7 +291,7 @@ def main():
     
     # Initialize components
     processor = StreamlitBankProcessor()
-    analyzer = FinancialAnalyzer()
+    analyzer = FinancialAnalyzer(base_analyzer=processor,)
     
     if tab_selection == "📁 Upload & Process":
         st.header("📁 Upload Bank Statement")

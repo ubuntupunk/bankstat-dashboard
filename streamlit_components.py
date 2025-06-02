@@ -1,6 +1,6 @@
 # streamlit_components.py
 import streamlit as st
-import enhanced_financial_analyzer
+import financial_analyzer
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -47,7 +47,7 @@ def create_advanced_charts(analyzer):
     """Create advanced visualization charts"""
     
     # Monthly trend chart
-    enhanced_analyzer = enhanced_financial_analyzer(analyzer)
+    enhanced_analyzer = financial_analyzer(analyzer)
     monthly_trends = enhanced_analyzer.get_monthly_trends()
     
     if monthly_trends:

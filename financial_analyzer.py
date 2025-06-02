@@ -1,4 +1,4 @@
-# enhanced_financial_analyzer.py
+# financial_analyzer.py
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
