@@ -72,6 +72,48 @@ class StreamlitBankProcessor:
         if not self.api_key:
             st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
         
+    def process_latest_json(self):
+        """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
+        try:
+            if os.path.exists("latest_bank_statement.json"):
+                with open("latest_bank_statement.json", "r") as f:
+                    json_data = json.load(f)
+                
+                df = self.extract_tables_to_dataframe(json_data)
+                if not df.empty:
+                    # Ensure 'date' column is datetime and handle missing 'debits'/'credits'
+                    if 'date' in df.columns:
+                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                    
+                    # Fill NaN in 'debits' and 'credits' with 0
+                    if 'debits' not in df.columns:
+                        df['debits'] = 0.0
+                    else:
+                        df['debits'] = pd.to_numeric(df['debits'], errors='coerce').fillna(0.0)
+                    
+                    if 'credits' not in df.columns:
+                        df['credits'] = 0.0
+                    else:
+                        df['credits'] = pd.to_numeric(df['credits'], errors='coerce').fillna(0.0)
+                    
+                    # Add 'category' column if not exists
+                    if 'category' not in df.columns:
+                        df['category'] = 'Uncategorized'
+                    
+                    return df
+                else:
+                    st.info("No tables found in the latest JSON data.")
+                    return pd.DataFrame()
+            else:
+                st.info("No bank statement JSON found. Please upload and process a bank statement first.")
+                return pd.DataFrame()
+        except json.JSONDecodeError:
+            st.error("Error decoding latest_bank_statement.json. File might be corrupted.")
+            return pd.DataFrame()
+        except Exception as e:
+            st.error(f"Error loading latest JSON data: {str(e)}")
+            return pd.DataFrame()
+
     def process_pdf(self, uploaded_file):
         """Process uploaded PDF file using Upstage API"""
         try:
@@ -351,8 +393,10 @@ def main():
                                 
                                 with col3:
                                     if st.button("💾 Save to Database"):
-                                        # Here you would save to MongoDB
-                                        st.success("✅ Saved to database!")
+                                        # Save to a local JSON file for demonstration
+                                        with open("latest_bank_statement.json", "w") as f:
+                                            json.dump(json_data, f, indent=2)
+                                        st.success("✅ Saved to database (local file)!")
                             else:
                                 st.warning("⚠️ No tables found in the PDF")
                         else:
