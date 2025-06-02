@@ -1,4 +1,5 @@
 # financial_analyzer.py
+import streamlit as st
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional

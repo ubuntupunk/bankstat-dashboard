@@ -5,9 +5,9 @@ class Config:
     """Configuration management for the Streamlit app using Streamlit secrets"""
 
     def __init__(self):
-        self.upstage_api_key = st.secrets.get("UPSTAGE_API_KEY")
-        self.db_password = st.secrets.get("database", {}).get("db_password")
-        self.mongodb_url = st.secrets.get("database", {}).get("mongodb_url")
+        self.upstage_api_key = st.secrets["upstage"]["api_key"]
+        self.db_password = st.secrets["database"]["db_password"]
+        self.mongodb_url = st.secrets["database"]["mongodb_url"]
 
     def validate_config(self):
         """Validate that all required secrets are set"""
