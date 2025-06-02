@@ -36,3 +36,4 @@ This plan aims to restore the full functionality of data persistence and correct
 - Re-introduced debug and processing information for MongoDB upload in 'streamlit_app.py'
 - Resolved "DataFrame has column names of mixed type" warning in 'streamlit_app.py'
 - Ensured MongoDB upload debug messages are visible in 'streamlit_app.py'
+- Add streamlit caching methods to persist data and db connections. Eg @st.cache_data (2025-06-02)

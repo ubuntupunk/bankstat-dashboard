@@ -31,11 +31,12 @@ class StreamlitBankProcessor:
         self.api_key = st.secrets["upstage"]["api_key"]
         if not self.api_key:
             st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
-        
+
         # Define the path for the latest bank statement JSON file
         self.json_file_path = os.path.join(os.path.dirname(__file__), "latest_bank_statement.json")
 
-    def process_latest_json(self):
+    @st.cache_data
+    def process_latest_json(_self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:
             if os.path.exists(self.json_file_path):
@@ -77,7 +78,8 @@ class StreamlitBankProcessor:
             st.error(f"Error loading latest JSON data from {self.json_file_path}: {str(e)}")
             return pd.DataFrame()
 
-    def process_pdf(self, uploaded_file):
+    @st.cache_data
+    def process_pdf(_self, uploaded_file):
         """Process uploaded PDF file using Upstage API"""
         try:
             # Create temporary file
@@ -135,7 +137,8 @@ class StreamlitBankProcessor:
             return start_date, end_date
         return None, None
 
-    def extract_tables_to_dataframe(self, json_data):
+    @st.cache_data
+    def extract_tables_to_dataframe(_self, json_data):
         """Extract tables from JSON data and convert to DataFrame"""
         try:
             all_tables = []

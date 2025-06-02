@@ -29,11 +29,12 @@ class FinancialAnalyzer:
         self.log_file.flush()
         print(log_message)
     
-    def get_transaction_summary(self) -> Dict:
+    @st.cache_data
+    def get_transaction_summary(_self: "FinancialAnalyzer") -> Dict:
         """Generate comprehensive transaction summary from the base analyzer's data"""
         try:
             # Get the processed transactions DataFrame
-            transactions_df = self.analyzer.process_latest_json()
+            transactions_df = _self.analyzer.process_latest_json()
             
             if transactions_df.empty:
                 return {
@@ -109,6 +110,7 @@ class FinancialAnalyzer:
                 'transaction_count': 0
             }
 
+    @st.cache_resource
     def connect_to_db(self):
         try:
             client = MongoClient(self.uri, server_api=ServerApi('1'))
@@ -146,13 +148,14 @@ class FinancialAnalyzer:
         
         return 'Other'
     
-    def get_monthly_trends(self, months: int = 6) -> Dict:
+    @st.cache_data
+    def get_monthly_trends(_self, months: int = 6) -> Dict:
         """Get monthly spending trends for the last N months"""
         try:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=months * 30)
             
-            summary = self.get_transaction_summary()
+            summary = _self.get_transaction_summary()
             daily_flow = summary.get('daily_flow', {})
             
             # Group by month
@@ -179,10 +182,11 @@ class FinancialAnalyzer:
             st.error(f"Error calculating monthly trends: {str(e)}")
             return {}
     
-    def get_category_insights(self) -> Dict:
+    @st.cache_data
+    def get_category_insights(_self) -> Dict:
         """Get insights about spending categories"""
         try:
-            summary = self.get_transaction_summary()
+            summary = _self.get_transaction_summary()
             expense_types = summary.get('expense_types', {})
             
             insights = {
@@ -221,10 +225,11 @@ class FinancialAnalyzer:
             st.error(f"Error getting category insights: {str(e)}")
             return {}
     
-    def detect_unusual_transactions(self, threshold_multiplier: float = 2.0) -> List[Dict]:
+    @st.cache_data
+    def detect_unusual_transactions(_self, threshold_multiplier: float = 2.0) -> List[Dict]:
         """Detect transactions that are unusually large compared to typical amounts"""
         try:
-            transactions_df = self.analyzer.process_latest_json()
+            transactions_df = _self.analyzer.process_latest_json()
             if transactions_df.empty:
                 return []
             
@@ -263,7 +268,8 @@ class FinancialAnalyzer:
             st.error(f"Error detecting unusual transactions: {str(e)}")
             return []
     
-    def generate_budget_recommendations(self) -> Dict:
+    @st.cache_data
+    def generate_budget_recommendations(_self) -> Dict:
         """Generate budget recommendations based on spending patterns"""
         try:
             insights = self.get_category_insights()
@@ -325,7 +331,8 @@ class FinancialAnalyzer:
             st.error(f"Error generating recommendations: {str(e)}")
             return {}
     
-    def get_spending_velocity(self, days: int = 30) -> Dict:
+    @st.cache_data
+    def get_spending_velocity(_self, days: int = 30) -> Dict:
         """Calculate spending velocity (rate of spending over time)"""
         try:
             transactions_df = self.analyzer.process_latest_json()
