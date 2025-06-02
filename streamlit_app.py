@@ -65,7 +65,10 @@ st.markdown("""
 
 class StreamlitBankProcessor:
     def __init__(self):
-        self.api_key = os.getenv("UPSTAGE_API_KEY")
+        #st.write("UPSTAGE API:", st.secrets["upstage.api_key"])
+        st.write("Secrets keys:", list(st.secrets.keys()))
+        # self.api_key = os.getenv("UPSTAGE_API_KEY")
+        self.api_key = st.secrets["upstage"]["api_key"]       
         if not self.api_key:
             st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
         

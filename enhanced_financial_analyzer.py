@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import streamlit as st
 
-class EnhancedFinancialAnalyzer:
+class FinancialAnalyzer:
     """Enhanced financial analyzer with better error handling and additional features"""
     
     def __init__(self, base_analyzer):
