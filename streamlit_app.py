@@ -27,7 +27,7 @@ st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 class StreamlitBankProcessor:
     def __init__(self):
-       # st.write("Secrets keys:", list(st.secrets.keys()))
+        st.write("Secrets keys:", list(st.secrets.keys()))
         self.api_key = st.secrets["upstage"]["api_key"]
         if not self.api_key:
             st.error("⚠️ UPSTAGE_API_KEY not found in environment variables")
@@ -431,7 +431,8 @@ def main():
                                             st.success(f"✅ Saved to local file: {self.json_file_path}!")
 
                                             debug_container.write("🛢️ Starting MongoDB upload process...")
-                                                
+                                            debug_container.write(f"JSON data valid: {json.dumps(json_data, indent=2)[:1000]}...")
+                                            
                                             try:
                                                 debug_container.write("🔌 Attempting to connect to MongoDB via FinancialAnalyzer...")
                                                 collection = analyzer.connect_to_db()

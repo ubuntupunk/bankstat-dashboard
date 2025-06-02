@@ -110,9 +110,17 @@ class FinancialAnalyzer:
             }
 
     def connect_to_db(self):
-        client = MongoClient(self.uri, server_api=ServerApi('1'))
-        db = client["bankstat"]
-        return db["statements"]
+        try:
+            client = MongoClient(self.uri, server_api=ServerApi('1'))
+            db = client["bankstat"]
+            self._log("Connected to database")
+            return db["statements"]
+        except Exception as e:
+            st.error(f"❌ MongoDB upload failed: {str(e)}")
+            self._log(f"Error connecting to database: {str(e)}")
+            debug.container.exception(e)
+            debug.container.write("Please check your MongoDB connection settings and try again")
+            raise
 
     def _categorize_transaction(self, description: str) -> str:
         """Simple transaction categorization based on description keywords"""
