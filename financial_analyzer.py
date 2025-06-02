@@ -19,7 +19,7 @@ class FinancialAnalyzer:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=months * 30)
             
-            summary = self.analyzer.get_transaction_summary()
+            summary = self.get_transaction_summary()
             daily_flow = summary.get('daily_flow', {})
             
             # Group by month
@@ -47,7 +47,7 @@ class FinancialAnalyzer:
     def get_category_insights(self) -> Dict:
         """Get insights about spending categories"""
         try:
-            summary = self.analyzer.get_transaction_summary()
+            summary = self.get_transaction_summary()
             expense_types = summary.get('expense_types', {})
             
             insights = {
@@ -150,3 +150,10 @@ class FinancialAnalyzer:
         except Exception as e:
             st.error(f"Error generating recommendations: {str(e)}")
             return {}
+    
+    def get_transaction_summary(self):
+        """Delegate to base analyzer's get_transaction_summary if available."""
+        if hasattr(self.analyzer, "get_transaction_summary"):
+            return self.analyzer.get_transaction_summary()
+        else:
+            raise AttributeError("Base analyzer does not implement get_transaction_summary")
