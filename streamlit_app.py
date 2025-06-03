@@ -40,7 +40,7 @@ def main():
         st.button("Login", on_click=st.login)
         st.stop()
 
-    user = auth.get_user()
+    user = auth.get_user(st.user.sub)
     if user is None:
         st.error('Unauthorized')
         st.stop()
@@ -51,7 +51,7 @@ def main():
         st.header("User")
         st.text(f"Logged in as {user.email} (ID: {user.user_id})")
         st.link_button('Account', auth.get_account_url(), use_container_width=True)
-        st.button('Logout', on_click=st.logout)
+        st.button('Logout', on_click=auth.log_out, args=(user.user_id,))
         st.header("Navigation")
         tab_selection = st.radio(
             "Choose Action:",
