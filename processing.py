@@ -5,23 +5,24 @@ import streamlit as st
 from datetime import datetime
 from io import StringIO
 import logging
+import re
 
-class BankStatementProcessor:
+class StreamlitAnalytics:
     """Handles bank statement processing and data extraction"""
     
     def __init__(self):
         self.json_file_path = "latest_bank_statement.json"
         logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
     
-    @st.cache_data
-    def load_latest_bank_statement(_self):
+    #@st.cache_data
+    def load_latest_bank_statement(self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:
-            if os.path.exists(_self.json_file_path):
-                with open(_self.json_file_path, "r") as f:
+            if os.path.exists(self.json_file_path):
+                with open(self.json_file_path, "r") as f:
                     json_data = json.load(f)
                 
-                df = _self.extract_tables_to_dataframe(json_data)
+                df = self._extract_tables_to_dataframe(json_data)
                 if not df.empty:
                     # Ensure 'date' column is datetime and handle missing columns
                     if 'date' in df.columns:
@@ -61,7 +62,7 @@ class BankStatementProcessor:
         """Process the latest JSON bank statement and return a standardized DataFrame."""
         return self.load_latest_bank_statement()
     
-    def extract_tables_to_dataframe(self, json_data):
+    def _extract_tables_to_dataframe(self, json_data):
         """Extract tables from JSON data and convert to DataFrame"""
         try:
             all_tables = []
@@ -72,7 +73,9 @@ class BankStatementProcessor:
                         df = pd.read_html(StringIO(html_table))[0]
                         if isinstance(df.columns, pd.MultiIndex):
                             df.columns = df.columns.map('_'.join)
-                        all_tables.append(df)
+                        # Only include transaction tables (based on expected columns)
+                        if any(col in df.columns for col in ['Date', 'Description', 'Debits (R)', 'Credits (R)', 'Balance (R)']):
+                            all_tables.append(df)
             
             if all_tables:
                 combined_df = pd.concat(all_tables, ignore_index=True)
@@ -89,21 +92,53 @@ class BankStatementProcessor:
                     'Description': 'description',
                     'Details': 'description',
                     'Trans Details': 'description',
+                    'Narrative Description': 'description',
                     'Debit': 'debits',
                     'Debits': 'debits',
+                    'Debits (R)': 'debits',
+                    'Fees (R) Debits (R)': 'debits',  # Handle merged column
                     'Credit': 'credits',
                     'Credits': 'credits',
+                    'Credits (R)': 'credits',
                     'Balance': 'balance',
+                    'Balance (R)': 'balance',
                     'Running Balance': 'balance',
-                    'Saldo': 'balance'
+                    'Saldo': 'balance',
+                    'Fees (R)': 'fees'  # Separate fees for clarity
                 }
                 combined_df = combined_df.rename(columns={k: v for k, v in column_mapping.items() if k in combined_df.columns})
                 
-                # Ensure required columns
-                required_columns = ['date', 'description', 'debits', 'credits', 'balance']
-                for col in required_columns:
-                    if col not in combined_df.columns:
-                        combined_df[col] = 'Unknown' if col == 'description' else 0.0
+                # Filter out summary rows (e.g., "Total Charges", "Closing balance")
+                if 'description' in combined_df.columns:
+                    combined_df = combined_df[~combined_df['description'].str.contains(
+                        'Total Charges|Closing balance|Opening balance|Balance brought forward', 
+                        case=False, na=False)]
+                
+                # Handle multiple values in debits/credits (e.g., "242.20 126.86")
+                for col in ['debits', 'credits', 'fees']:
+                    if col in combined_df.columns:
+                        def parse_multi_values(x):
+                            if pd.isna(x):
+                                return 0.0
+                            # Split by whitespace and sum valid numbers
+                            values = str(x).split()
+                            total = 0.0
+                            for val in values:
+                                cleaned = re.sub(r'[^\d.-]', '', val)
+                                try:
+                                    total += float(cleaned)
+                                except ValueError:
+                                    continue
+                            return total
+                        combined_df[col] = combined_df[col].apply(parse_multi_values)
+                
+                # Ensure numeric columns
+                for col in ['debits', 'credits', 'balance', 'fees']:
+                    if col in combined_df.columns:
+                        combined_df[col] = combined_df[col].astype(str).str.replace(r'[^\d.-]', '', regex=True)
+                        # Remove multiple decimal points
+                        combined_df[col] = combined_df[col].str.replace(r'\.(?=.*\.)', '', regex=True)
+                        combined_df[col] = pd.to_numeric(combined_df[col], errors='coerce').fillna(0.0)
                 
                 # Process Balance/Running Total
                 balance_col = self._find_balance_column(combined_df)
@@ -111,9 +146,6 @@ class BankStatementProcessor:
                     combined_df = self._process_balance_column(combined_df, balance_col)
                 else:
                     combined_df['balance'] = pd.to_numeric(combined_df['balance'], errors='coerce').fillna(0.0)
-                
-                # Ensure numeric columns
-                combined_df = self._ensure_numeric_columns(combined_df)
                 
                 # Ensure date is datetime
                 if 'date' in combined_df.columns:
@@ -123,10 +155,15 @@ class BankStatementProcessor:
                 if 'category' not in combined_df.columns:
                     combined_df['category'] = 'Uncategorized'
                 
+                # Drop redundant columns
+                keep_columns = ['date', 'description', 'debits', 'credits', 'balance', 'category', 'fees']
+                existing_columns = [col for col in keep_columns if col in combined_df.columns]
+                combined_df = combined_df[existing_columns]
+                
                 logging.debug(f"Processed DataFrame columns: {combined_df.columns.tolist()}")
                 return combined_df
             
-            logging.warning("No tables found in JSON data")
+            logging.warning("No transaction tables found in JSON data")
             return pd.DataFrame()
         
         except Exception as e:
@@ -144,12 +181,9 @@ class BankStatementProcessor:
     def _process_balance_column(self, df, balance_col):
         """Process and clean the balance column"""
         try:
-            df['balance'] = df[balance_col].astype(str).str.replace(r'[^\d.,-]', '', regex=True).str.replace(',', '', regex=True)
-            
-            # Handle potential multiple decimal points if comma was used as decimal separator
-            if df['balance'].str.count(r'\.').max() > 1:
-                df['balance'] = df['balance'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-            
+            df['balance'] = df[balance_col].astype(str).str.replace(r'[^\d.-]', '', regex=True)
+            # Handle multiple decimal points
+            df['balance'] = df['balance'].str.replace(r'\.(?=.*\.)', '', regex=True)
             df['balance'] = pd.to_numeric(df['balance'], errors='coerce').fillna(0.0)
             
             # Ensure date column is datetime and sort for running total

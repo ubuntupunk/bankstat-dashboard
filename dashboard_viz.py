@@ -16,7 +16,6 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
             # Filter by date range if not already filtered
             if 'date' in transactions_df.columns:
                 transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
-                # Only filter if we haven't already filtered the data
                 if len(transactions_df) > 0:
                     date_range_filtered = transactions_df[
                         (transactions_df['date'] >= pd.to_datetime(start_date)) &
@@ -24,6 +23,12 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                     ]
                     if len(date_range_filtered) > 0:
                         transactions_df = date_range_filtered
+            
+            # Debug: Show data summary
+            st.write("**Debug: Transaction Data Summary**")
+            st.write(transactions_df[['debits', 'credits', 'balance']].describe())
+            st.write("**Debug: Sample Transactions**")
+            st.write(transactions_df[['date', 'description', 'debits', 'credits', 'balance']].head())
             
             # Get transaction summary with the filtered data
             summary = analyzer.get_transaction_summary(transactions_df)
@@ -40,7 +45,6 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                 )
                 avg_balance = balance_data.get('average_balance', 0)
             except:
-                # Fallback to simple average if analyzer method fails
                 avg_balance = transactions_df['balance'].mean() if 'balance' in transactions_df.columns else 0
 
             with col1:
@@ -57,7 +61,6 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
             with col4:
                 st.metric("🏦 Avg Balance", f"R {avg_balance:,.2f}")
         else:
-            # Show zero metrics if no data
             with col1:
                 st.metric("💰 Total Income", "R 0.00")
             with col2:
@@ -80,14 +83,13 @@ def create_expense_breakdown_chart(summary_data):
             st.warning("No expense data available")
             return
 
-        # Convert to DataFrame for plotting
         categories = []
         amounts = []
 
         for category, data in expense_types.items():
             if isinstance(data, dict) and 'debits' in data:
                 debits = data['debits']
-                if debits > 0:  # Only show expenses (debits)
+                if debits > 0:
                     categories.append(category)
                     amounts.append(debits)
 
@@ -97,7 +99,6 @@ def create_expense_breakdown_chart(summary_data):
                 'Amount': amounts
             })
 
-            # Create pie chart
             fig = px.pie(df_expenses, values='Amount', names='Category',
                         title="Expense Breakdown by Category",
                         color_discrete_sequence=px.colors.qualitative.Set3)
@@ -117,7 +118,6 @@ def create_cash_flow_chart(summary_data):
             st.warning("No daily flow data available")
             return
 
-        # Convert to DataFrame
         dates = []
         debits = []
         credits = []
@@ -136,7 +136,6 @@ def create_cash_flow_chart(summary_data):
             })
             df_flow = df_flow.sort_values('Date')
 
-            # Create line chart
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df_flow['Date'], y=df_flow['Income'],
                                    mode='lines+markers', name='Income',

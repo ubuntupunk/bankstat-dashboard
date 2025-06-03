@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime, timedelta
 from config import Config
-from processing import BankStatementProcessor
+from processing import StreamlitAnalytics
 from connection import DatabaseConnection
 from financial_analyzer import FinancialAnalyzer
 from pdf_processor import StreamlitBankProcessor
@@ -31,7 +31,7 @@ def main():
         return
 
     # Initialize components
-    processor = BankStatementProcessor()
+    processor = StreamlitAnalytics()
     db_connection = DatabaseConnection()
     pdf_processor = StreamlitBankProcessor()
     analyzer = FinancialAnalyzer(base_analyzer=processor)
