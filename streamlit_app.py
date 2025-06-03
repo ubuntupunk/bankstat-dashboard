@@ -8,6 +8,7 @@ from pdf_processor import StreamlitBankProcessor
 from upload_tab import render_upload_tab
 from dashboard_tab import render_dashboard_tab
 from settings_tab import render_settings_tab
+from tools_tab import render_tools_tab
 
 # Configure page
 st.set_page_config(
@@ -45,7 +46,7 @@ def main():
         st.header("Navigation")
         tab_selection = st.radio(
             "Choose Action:",
-            ["📊 View Dashboard", "📁 Upload & Process", "⚙️ Settings"]
+            ["📊 View Dashboard", "📁 Upload & Process", "🧮 Tools", "⚙️ Settings"]
         )
         st.header("Date Range")
         col1, col2 = st.columns(2)
@@ -59,6 +60,8 @@ def main():
         render_upload_tab(pdf_processor, processor, db_connection)
     elif tab_selection == "📊 View Dashboard":
         render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
+    elif tab_selection == "🧮 Tools":
+        render_tools_tab()
     elif tab_selection == "⚙️ Settings":
         render_settings_tab(processor, pdf_processor, analyzer, db_connection)
 

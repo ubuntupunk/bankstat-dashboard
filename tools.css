@@ -1,0 +1,70 @@
+.calculator-container {
+    background-color: #f9fafb;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+.header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.header h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+.input-section, .results-section {
+    margin-bottom: 1.5rem;
+}
+.input-section h2, .results-section h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 1rem;
+}
+.input-field {
+    margin-bottom: 1rem;
+}
+.input-field label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+}
+.result-card {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid;
+    margin-bottom: 1rem;
+}
+.investment-card {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.consumption-card {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+}
+.advantage-card {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+}
+.result-card .title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+.diagram-container {
+    background-color: #f3f4f6;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    display: flex;
+    justify-content: center;
+}
