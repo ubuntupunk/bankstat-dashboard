@@ -12,6 +12,7 @@ from io import StringIO
 import tempfile
 from financial_analyzer import FinancialAnalyzer
 from processing import BankStatementProcessor
+from connection import DatabaseConnection
 import logging
 from config import Config
 
@@ -35,6 +36,7 @@ if missing_secrets:
 else:
     # Initialize processors globally
     processor = BankStatementProcessor()
+    db_connection = DatabaseConnection()
     
     class StreamlitBankProcessor:
         def __init__(self):
@@ -55,8 +57,8 @@ else:
                 st.write(f"📂 Temporary file created at: {tmp_file_path}")
                 url = 'https://api.upstage.ai/v1/document-ai/document-parse'
                 headers = {"Authorization": f"Bearer {_self.api_key}"}
-                st.write("🔗 API endpoint:", url)
-                st.write("🔑 Using API key (truncated):", _self.api_key[:4] + "..." + _self.api_key[-4:])
+                st.write("🔗 API endpoint: {url}")
+                st.write("🔑 Using API key (truncated): {_self.api_key[:4]}...{_self.api_key[-4:]}")
 
                 with open(tmp_file_path, "rb") as file:
                     files = {"document": file}
@@ -72,7 +74,7 @@ else:
                     st.write("✅ API request successful")
                     st.write(f"⏱️ Response time: {response.elapsed.total_seconds():.2f}s")
                     data = response.json()
-                    st.write("📊 Extracted data keys:", list(data.keys()))
+                    st.write("📊 Extracted data keys: {list(data.keys())}")
 
                     # Parse filename for date range
                     filename = uploaded_file.name
@@ -103,42 +105,50 @@ else:
                 return start_date, end_date
             return None, None
 
-    def create_dashboard_metrics(analyzer, start_date, end_date):
+    def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=None):
         """Create key financial metrics display"""
         col1, col2, col3, col4 = st.columns(4)
 
         try:
-            # Get transaction data using the processor
-            transactions_df = processor.load_latest_bank_statement()
+            # Use provided transactions_df or load from processor
+            if transactions_df is None or transactions_df.empty:
+                transactions_df = processor.load_latest_bank_statement()
             
             if transactions_df is not None and not transactions_df.empty:
-                # Filter by date range
-                filtered_df = transactions_df[
-                    (pd.to_datetime(transactions_df['date']) >= pd.to_datetime(start_date)) &
-                    (pd.to_datetime(transactions_df['date']) <= pd.to_datetime(end_date))
-                ]
+                # Filter by date range if not already filtered
+                if 'date' in transactions_df.columns:
+                    transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
+                    # Only filter if we haven't already filtered the data
+                    if len(transactions_df) > 0:
+                        date_range_filtered = transactions_df[
+                            (transactions_df['date'] >= pd.to_datetime(start_date)) &
+                            (transactions_df['date'] <= pd.to_datetime(end_date))
+                        ]
+                        if len(date_range_filtered) > 0:
+                            transactions_df = date_range_filtered
                 
-                # Get transaction summary with the filtered data using analyzer
-                summary = analyzer.get_transaction_summary(filtered_df)
+                # Get transaction summary with the filtered data
+                summary = analyzer.get_transaction_summary(transactions_df)
                 
-                # Get balance data
-                balance_data = analyzer.calculate_monthly_average_balance(
-                    start_date.strftime("%Y-%m-%d"),
-                    end_date.strftime("%Y-%m-%d")
-                )
+                # Calculate metrics from the data we have
+                total_income = transactions_df['credits'].sum() if 'credits' in transactions_df.columns else 0
+                total_expenses = transactions_df['debits'].sum() if 'debits' in transactions_df.columns else 0
                 
-                # Get fees data
-                fees_data = analyzer.analyze_bank_fees(
-                    start_date.strftime("%Y-%m-%d"),
-                    end_date.strftime("%Y-%m-%d")
-                )
+                # Try to get balance data from analyzer, fallback to simple calculation
+                try:
+                    balance_data = analyzer.calculate_monthly_average_balance(
+                        start_date.strftime("%Y-%m-%d"),
+                        end_date.strftime("%Y-%m-%d")
+                    )
+                    avg_balance = balance_data.get('average_balance', 0)
+                except:
+                    # Fallback to simple average if analyzer method fails
+                    avg_balance = transactions_df['balance'].mean() if 'balance' in transactions_df.columns else 0
 
                 with col1:
-                    total_income = summary.get('total_credits', 0)
                     st.metric("💰 Total Income", f"R {total_income:,.2f}")
 
                 with col2:
-                    total_expenses = summary.get('total_debits', 0)
                     st.metric("💸 Total Expenses", f"R {total_expenses:,.2f}")
 
                 with col3:
@@ -147,9 +157,18 @@ else:
                              delta=f"{'Positive' if net_flow > 0 else 'Negative'}")
 
                 with col4:
-                    avg_balance = balance_data.get('average_balance', 0)
                     st.metric("🏦 Avg Balance", f"R {avg_balance:,.2f}")
             else:
+                # Show zero metrics if no data
+                with col1:
+                    st.metric("💰 Total Income", "R 0.00")
+                with col2:
+                    st.metric("💸 Total Expenses", "R 0.00")
+                with col3:
+                    st.metric("📊 Net Flow", "R 0.00")
+                with col4:
+                    st.metric("🏦 Avg Balance", "R 0.00")
+                
                 st.warning("No transaction data available for the selected date range")
                 
         except Exception as e:
@@ -265,7 +284,7 @@ else:
 
         # Initialize components
         pdf_processor = StreamlitBankProcessor()
-        analyzer = FinancialAnalyzer()
+        analyzer = FinancialAnalyzer(base_analyzer=processor)
 
         if tab_selection == "📁 Upload & Process":
             st.header("📁 Upload Bank Statement")
@@ -325,105 +344,222 @@ else:
 
                                     with col3:
                                         if st.button("💾 Save to Database"):
-                                            # Save using the processor
-                                            debug_container = st.container()
-                                            debug_container.subheader("Database Save Debug")
+                                            # Create debug container first
+                                            debug_container = st.empty()
                                             
                                             with st.spinner("Saving data..."):
-                                                # Save to local JSON file
+                                                # Save to local JSON file first
+                                                debug_container.text("📁 Saving to local file...")
                                                 if processor.save_bank_statement(json_data):
-                                                    st.success("✅ Saved to local file!")
+                                                    debug_container.text("✅ Saved to local file!")
+                                                else:
+                                                    debug_container.text("❌ Failed to save local file!")
+                                                    st.error("Failed to save to local file")
+                                                    return
                                                 
-                                                # Also try MongoDB upload
-                                                debug_container.write("🛢️ Starting MongoDB upload process...")
-                                                debug_container.write(f"JSON data preview: {str(json_data)[:500]}...")
+                                                # Now try MongoDB upload
+                                                debug_container.text("🛢️ Starting MongoDB upload process...")
+                                                st.write(f"📊 JSON data keys: {list(json_data.keys())}")
+                                                st.write(f"📄 Filename: {json_data.get('filename', 'Unknown')}")
                                                 
                                                 try:
-                                                    debug_container.write("🔌 Attempting to connect to MongoDB via FinancialAnalyzer...")
-                                                    collection = analyzer.connect_to_db()
-                                                    debug_container.write("✅ MongoDB connection successful via FinancialAnalyzer")
-                                                    debug_container.write(f"📄 Connected to collection: {collection.name}")
-                                                    
-                                                    debug_container.write("📝 Preparing to insert document...")
-                                                    debug_container.write(f"📊 Document size: {len(json.dumps(json_data)):,} bytes")
-                                                    debug_container.write("⏳ Inserting document...")
-                                                    result = collection.insert_one(json_data)
-                                                    debug_container.write(f"📌 Success! Inserted document ID: {result.inserted_id}")
-                                                    debug_container.write(f"📊 Collection now has {collection.count_documents({})} documents")
-                                                    
+                                                    debug_container.text("🔌 Connecting to MongoDB...")
+                                                    inserted_id = db_connection.insert_document(json_data)
+                                                    debug_container.text(f"✅ Success! Document ID: {inserted_id}")
+                                                    doc_count = db_connection.count_documents()
+                                                    debug_container.text(f"📊 Total documents in collection: {doc_count}")
                                                     st.success("✅ Data uploaded to MongoDB successfully!")
-                                                    
+                                                    st.info("💡 Data is now in database. You can view it in the Dashboard tab.")
                                                 except Exception as e:
-                                                    st.error("❌ MongoDB upload failed!")
-                                                    debug_container.write("🛠️ Error details:")
-                                                    debug_container.exception(e)
-                                                    debug_container.write("Please check your MongoDB connection settings and try again")
+                                                    st.error(f"❌ MongoDB upload failed: {str(e)}")
+                                                    st.write("🔧 Debug info:")
+                                                    st.write(f"- Error type: {type(e).__name__}")
+                                                    st.write(f"- Error message: {str(e)}")
+                                                    debug_container.empty()
                             else:
                                 st.error("❌ Failed to process PDF")
 
         elif tab_selection == "📊 View Dashboard":
             st.header("📊 Financial Dashboard")
-
-            # Key Metrics
-            st.subheader("📈 Key Metrics")
-            create_dashboard_metrics(analyzer, start_date, end_date)
-
-            # Charts section
-            col1, col2 = st.columns(2)
-
+            
+            # Data source selection
+            col1, col2 = st.columns([3, 1])
             with col1:
-                st.subheader("💰 Expense Breakdown")
+                st.subheader("📈 Key Metrics")
+            with col2:
+                # Check what data is available
+                local_available = processor.get_statement_info() is not None
+                db_available = False
                 try:
-                    # Get transaction data using processor
-                    transactions_df = processor.load_latest_bank_statement()
-                    if not transactions_df.empty:
+                    doc_count = db_connection.count_documents()
+                    db_available = doc_count > 0
+                except:
+                    db_available = False
+                
+                data_source = st.selectbox(
+                    "Data Source:",
+                    ["Database Query", "Local File"] if db_available else (["Local File"] if local_available else ["No Data"]),
+                    help="Choose whether to query database by date range or use local file"
+                )
+            
+            if data_source == "No Data":
+                st.warning("⚠️ No data available. Please upload and process a bank statement first.")
+                return
+                
+            # Load data based on source
+            transactions_df = pd.DataFrame()
+            data_info = {}
+            
+            if data_source == "Database Query":
+                try:
+                    st.info(f"🔍 Querying database for transactions between {start_date} and {end_date}")
+                    with st.spinner("Loading data from database..."):
+                        # Query database for date range
+                        query = {
+                            "$or": [
+                                {
+                                    "period.start": {"$lte": end_date.strftime("%Y-%m-%d")},
+                                    "period.end": {"$gte": start_date.strftime("%Y-%m-%d")}
+                                },
+                                {
+                                    "period.start": {"$exists": False}  # Fallback for documents without period
+                                }
+                            ]
+                        }
+                        
+                        documents = db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
+                        st.write(f"📊 Found {len(documents)} relevant document(s) in database")
+                        
+                        if documents:
+                            # Process all documents that match the date range
+                            for doc in documents:
+                                df = processor.extract_tables_to_dataframe(doc)
+                                if not df.empty:
+                                    # Filter by actual transaction dates
+                                    if 'date' in df.columns:
+                                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                                        df = df[
+                                            (df['date'] >= pd.to_datetime(start_date)) &
+                                            (df['date'] <= pd.to_datetime(end_date))
+                                        ]
+                                    
+                                    if not df.empty:
+                                        transactions_df = pd.concat([transactions_df, df], ignore_index=True)
+                            
+                            if not transactions_df.empty:
+                                # Remove duplicates and sort
+                                transactions_df = transactions_df.drop_duplicates().sort_values('date' if 'date' in transactions_df.columns else transactions_df.columns[0])
+                                data_info = {
+                                    'source': 'Database',
+                                    'documents_found': len(documents),
+                                    'transactions_loaded': len(transactions_df),
+                                    'date_range': f"{start_date} to {end_date}"
+                                }
+                            else:
+                                st.warning(f"No transactions found in database for date range {start_date} to {end_date}")
+                        else:
+                            st.warning(f"No documents found in database covering the date range {start_date} to {end_date}")
+                            
+                except Exception as e:
+                    st.error(f"Error querying database: {str(e)}")
+                    st.info("Falling back to local file if available...")
+                    data_source = "Local File"
+            
+            if data_source == "Local File" or (data_source == "Database Query" and transactions_df.empty):
+                try:
+                    with st.spinner("Loading data from local file..."):
+                        transactions_df = processor.load_latest_bank_statement()
+                        statement_info = processor.get_statement_info()
+                        
+                        if not transactions_df.empty and statement_info:
+                            # Check if local file date range overlaps with selected range
+                            period = statement_info.get('period', {})
+                            if period.get('start') and period.get('end'):
+                                file_start = pd.to_datetime(period['start'])
+                                file_end = pd.to_datetime(period['end'])
+                                selected_start = pd.to_datetime(start_date)
+                                selected_end = pd.to_datetime(end_date)
+                                
+                                if file_end < selected_start or file_start > selected_end:
+                                    st.warning(f"⚠️ Local file covers {period['start']} to {period['end']}, but you selected {start_date} to {end_date}. There may be no overlapping data.")
+                                
+                                # Filter to selected date range
+                                if 'date' in transactions_df.columns:
+                                    transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
+                                    original_count = len(transactions_df)
+                                    transactions_df = transactions_df[
+                                        (transactions_df['date'] >= selected_start) &
+                                        (transactions_df['date'] <= selected_end)
+                                    ]
+                                    filtered_count = len(transactions_df)
+                                    
+                                    if filtered_count == 0:
+                                        st.warning(f"No transactions found in local file for your selected date range ({start_date} to {end_date})")
+                                    elif filtered_count < original_count:
+                                        st.info(f"Filtered to {filtered_count} transactions (from {original_count} total) matching your date range")
+                            
+                            data_info = {
+                                'source': 'Local File',
+                                'filename': statement_info['filename'],
+                                'file_period': f"{period.get('start', 'Unknown')} to {period.get('end', 'Unknown')}",
+                                'transactions_loaded': len(transactions_df),
+                                'selected_range': f"{start_date} to {end_date}"
+                            }
+                        
+                except Exception as e:
+                    st.error(f"Error loading local file: {str(e)}")
+            
+            # Display data info
+            if data_info:
+                with st.expander("📋 Data Source Information", expanded=False):
+                    for key, value in data_info.items():
+                        st.write(f"**{key.replace('_', ' ').title()}:** {value}")
+
+            # Create metrics and charts if we have data
+            if not transactions_df.empty:
+                create_dashboard_metrics(analyzer, start_date, end_date, transactions_df)
+
+                # Charts section
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader("💰 Expense Breakdown")
+                    try:
                         summary_data = analyzer.get_transaction_summary(transactions_df)
                         create_expense_breakdown_chart(summary_data)
-                    else:
-                        st.info("No data available for expense breakdown")
-                except Exception as e:
-                    st.error(f"Error loading expense data: {str(e)}")
+                    except Exception as e:
+                        st.error(f"Error loading expense data: {str(e)}")
 
-            with col2:
-                st.subheader("📊 Cash Flow Trend")
-                try:
-                    # Get transaction data using processor
-                    transactions_df = processor.load_latest_bank_statement()
-                    if not transactions_df.empty:
+                with col2:
+                    st.subheader("📊 Cash Flow Trend")
+                    try:
                         summary_data = analyzer.get_transaction_summary(transactions_df)
                         create_cash_flow_chart(summary_data)
-                    else:
-                        st.info("No data available for cash flow trend")
-                except Exception as e:
-                    st.error(f"Error loading cash flow data: {str(e)}")
+                    except Exception as e:
+                        st.error(f"Error loading cash flow data: {str(e)}")
 
-            # Transaction details
-            st.subheader("💳 Recent Transactions")
-            try:
-                # Get latest transactions using processor
-                transactions_df = processor.load_latest_bank_statement()
-                if not transactions_df.empty:
-                    # Filter by date range
-                    filtered_df = transactions_df[
-                        (pd.to_datetime(transactions_df['date']) >= pd.to_datetime(start_date)) &
-                        (pd.to_datetime(transactions_df['date']) <= pd.to_datetime(end_date))
-                    ]
-
+                # Transaction details
+                st.subheader("💳 Recent Transactions")
+                try:
                     # Display top 20 transactions
-                    display_df = filtered_df.head(20)[['date', 'description', 'debits', 'credits', 'balance', 'category']]
+                    display_columns = ['date', 'description', 'debits', 'credits', 'balance']
+                    if 'category' in transactions_df.columns:
+                        display_columns.append('category')
+                    
+                    display_df = transactions_df.head(20)[display_columns]
                     st.dataframe(display_df, use_container_width=True)
 
                     # Show uncategorized transactions
-                    uncategorized = filtered_df[filtered_df['category'] == 'Uncategorized']
-                    if not uncategorized.empty:
-                        st.warning(f"⚠️ {len(uncategorized)} uncategorized transactions found")
-                        with st.expander("View Uncategorized Transactions"):
-                            st.dataframe(uncategorized[['date', 'description', 'debits', 'credits', 'balance']])
-                else:
-                    st.info("No transaction data available. Please upload and process a bank statement first.")
-
-            except Exception as e:
-                st.error(f"Error loading transactions: {str(e)}")
+                    if 'category' in transactions_df.columns:
+                        uncategorized = transactions_df[transactions_df['category'] == 'Uncategorized']
+                        if not uncategorized.empty:
+                            st.warning(f"⚠️ {len(uncategorized)} uncategorized transactions found")
+                            with st.expander("View Uncategorized Transactions"):
+                                st.dataframe(uncategorized[display_columns[:-1]])  # Exclude category column
+                except Exception as e:
+                    st.error(f"Error displaying transactions: {str(e)}")
+            else:
+                st.info("No transaction data available for the selected criteria.")
 
         elif tab_selection == "⚙️ Settings":
             st.header("⚙️ Settings")
@@ -461,8 +597,11 @@ else:
             if st.button("➕ Add Category Mapping"):
                 if new_term and new_category:
                     try:
-                        analyzer.add_category_mapping(new_term, new_category, category_type)
-                        st.success(f"✅ Added mapping: '{new_term}' → '{new_category}' ({category_type})")
+                        success = analyzer.add_category_mapping(new_term, new_category, category_type)
+                        if success:
+                            st.success(f"✅ Added mapping: '{new_term}' → '{new_category}' ({category_type})")
+                        else:
+                            st.error("Failed to add category mapping")
                     except Exception as e:
                         st.error(f"Error adding mapping: {str(e)}")
                 else:
@@ -480,6 +619,15 @@ else:
             if st.button("💾 Save API Key"):
                 # In a real app, you'd save this securely
                 st.success("✅ API key updated")
+
+            # Database Connection Test
+            st.subheader("🛢️ Database Connection")
+            if st.button("🔍 Test Database Connection"):
+                success, message = db_connection.test_connection()
+                if success:
+                    st.success(f"✅ {message}")
+                else:
+                    st.error(f"❌ {message}")
 
             # System Information
             st.subheader("ℹ️ System Information")

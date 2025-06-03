@@ -1,4 +1,4 @@
-# financial_analyzer.py
+#financial_analyzer.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,8 +6,7 @@ from typing import Dict, List, Tuple, Optional
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
+from connection import DatabaseConnection
 from config import Config
 from financial_insights import FinancialInsights
 
@@ -16,8 +15,7 @@ class FinancialAnalyzer:
         self.analyzer = base_analyzer
         self.log_file = open("financial_analyzer.log", "a")
         self.config = Config()
-        self.db_password = self.config.db_password
-        self.uri = f"mongodb+srv://ubuntupunk:{self.db_password}@{self.config.mongodb_url}"
+        self.db_connection = DatabaseConnection()
         self.insights = FinancialInsights(self)
         self._log("initialising FinancialAnalyser...")
     
@@ -31,12 +29,13 @@ class FinancialAnalyzer:
     @st.cache_resource
     def connect_to_db(self):
         try:
-            client = MongoClient(self.uri, server_api=ServerApi('1'))
-            db = client["bankstat"]
-            self._log("Connected to database")
-            return db["statements"]
+            collection = self.db_connection.get_collection()
+            if collection is None:
+                raise Exception("Failed to connect to MongoDB collection")
+            self._log("Connected to database collection")
+            return collection
         except Exception as e:
-            print(f"❌ MongoDB upload failed: {str(e)}")
+            print(f"❌ MongoDB connection failed: {str(e)}")
             self._log(f"Error connecting to database: {str(e)}")
             raise
 
@@ -65,11 +64,12 @@ class FinancialAnalyzer:
         return 'Other'
 
     @st.cache_data
-    def get_transaction_summary(_self: "FinancialAnalyzer") -> Dict:
-        """Generate comprehensive transaction summary from the base analyzer's data"""
+    def get_transaction_summary(_self: "FinancialAnalyzer", transactions_df: Optional[pd.DataFrame] = None) -> Dict:
+        """Generate comprehensive transaction summary from the provided or base analyzer's data"""
         try:
-            # Get the processed transactions DataFrame
-            transactions_df = _self.analyzer.process_latest_json()
+            # Use provided transactions_df or load from processor
+            if transactions_df is None or transactions_df.empty:
+                transactions_df = _self.analyzer.process_latest_json()
             
             if transactions_df.empty:
                 return {
@@ -147,21 +147,31 @@ class FinancialAnalyzer:
 
     @st.cache_data
     def add_category_mapping(_self, term: str, category: str, category_type: str) -> bool:
-        """Add a new category mapping (placeholder implementation)"""
+        """Add a new category mapping"""
         try:
-            # In a real implementation, you might store this in a database or config file
-            # For now, we'll just log it
-            _self._log(f"Added category mapping: '{term}' -> '{category}' ({category_type})")
+            # Store in database
+            collection = _self.db_connection.get_collection("category_mappings")
+            if collection is None:
+                raise Exception("Failed to connect to category_mappings collection")
+            
+            mapping = {
+                'term': term,
+                'category': category,
+                'category_type': category_type,
+                'created_at': datetime.now().isoformat()
+            }
+            result = collection.insert_one(mapping)
+            _self._log(f"Added category mapping: '{term}' -> '{category}' ({category_type}), ID: {result.inserted_id}")
             return True
         except Exception as e:
             st.error(f"Error adding category mapping: {str(e)}")
+            _self._log(f"Error adding category mapping: {str(e)}")
             return False
 
     def process_latest_json(self):
         """Delegate to the base analyzer's process_latest_json method"""
         return self.analyzer.process_latest_json()
 
-    # Delegate methods to insights module
     def get_monthly_trends(self, months: int = 6):
         """Get monthly spending trends - delegated to insights module"""
         return self.insights.get_monthly_trends(months)
