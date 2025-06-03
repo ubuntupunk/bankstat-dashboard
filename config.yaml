@@ -1,0 +1,37 @@
+cookie:
+  expiry_days: 30
+  key: "random_signature_key" # To be filled with any string
+  name: "random_cookie_name" # To be filled with any string
+credentials:
+  usernames:
+    ubuntupunk:
+      email: ubuntupunk@gmail.com
+      failed_login_attempts: 0 # Will be managed automatically
+      first_name: David
+      last_name: Lewis
+      logged_in: False # Will be managed automatically
+      password: abc # Will be hashed automatically
+      roles: # Optional
+      - admin
+      - editor
+      - viewer
+    ethnopunk:
+      email: ethnopunk@yahoo.co.uk
+      failed_login_attempts: 0 # Will be managed automatically
+      first_name: Ethno
+      last_name: Punk
+      logged_in: False # Will be managed automatically
+      password: def # Will be hashed automatically
+      roles: # Optional
+      - viewer
+oauth2: # Optional
+  google: # Follow instructions: https://developers.google.com/identity/protocols/oauth2
+    client_id: # To be filled
+    client_secret: # To be filled
+    redirect_uri: # URL to redirect to after OAuth2 authentication
+  microsoft: # Follow instructions: https://learn.microsoft.com/en-us/graph/auth-register-app-v2
+    client_id: # To be filled
+    client_secret: # To be filled
+    redirect_uri: # URL to redirect to after OAuth2 authentication
+    tenant_id: # To be filled
+api_key: 2800 # Optional - register to receive a free API key: https://stauthenticator.com
