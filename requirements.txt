@@ -8,6 +8,6 @@ pymongo>=4.5.0
 python-dotenv>=1.0.0
 lxml>=5.4.0
 streamlit-authenticator
-streamlit-mermaid
+streamlit_mermaid
 propelauth_py
 Authlib
