@@ -1,4 +1,3 @@
-#financial_analyzer.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -43,7 +42,6 @@ class FinancialAnalyzer:
         """Simple transaction categorization based on description keywords"""
         description_lower = str(description).lower()
         
-        # Define keyword mappings
         categories = {
             'Groceries': ['woolworths', 'checkers', 'pick n pay', 'spar', 'food', 'grocery'],
             'Transport': ['uber', 'bolt', 'petrol', 'fuel', 'taxi', 'transport', 'parking'],
@@ -69,9 +67,37 @@ class FinancialAnalyzer:
         try:
             # Use provided transactions_df or load from processor
             if transactions_df is None or transactions_df.empty:
-                transactions_df = _self.analyzer.process_latest_json()
+                try:
+                    transactions_df = _self.analyzer.process_latest_json()
+                except AttributeError as e:
+                    _self._log(f"Error: BankStatementProcessor missing process_latest_json: {str(e)}")
+                    return {
+                        'daily_flow': {},
+                        'expense_types': {},
+                        'total_debits': 0,
+                        'total_credits': 0,
+                        'net_flow': 0,
+                        'transaction_count': 0
+                    }
             
             if transactions_df.empty:
+                _self._log("No transactions available in DataFrame")
+                return {
+                    'daily_flow': {},
+                    'expense_types': {},
+                    'total_debits': 0,
+                    'total_credits': 0,
+                    'net_flow': 0,
+                    'transaction_count': 0
+                }
+            
+            # Verify required columns
+            required_columns = ['date', 'debits', 'credits', 'description']
+            available_columns = transactions_df.columns.tolist()
+            missing_columns = [col for col in required_columns if col not in available_columns]
+            if missing_columns:
+                _self._log(f"Missing columns in transactions_df: {missing_columns}")
+                _self._log(f"Available columns: {available_columns}")
                 return {
                     'daily_flow': {},
                     'expense_types': {},
@@ -96,7 +122,7 @@ class FinancialAnalyzer:
             summary['net_flow'] = summary['total_credits'] - summary['total_debits']
             
             # Daily flow analysis
-            transactions_df['date'] = pd.to_datetime(transactions_df['date'])
+            transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
             daily_groups = transactions_df.groupby(transactions_df['date'].dt.date)
             
             for date, group in daily_groups:
@@ -135,6 +161,7 @@ class FinancialAnalyzer:
             return summary
             
         except Exception as e:
+            _self._log(f"Error generating transaction summary: {str(e)}")
             st.error(f"Error generating transaction summary: {str(e)}")
             return {
                 'daily_flow': {},
@@ -149,7 +176,6 @@ class FinancialAnalyzer:
     def add_category_mapping(_self, term: str, category: str, category_type: str) -> bool:
         """Add a new category mapping"""
         try:
-            # Store in database
             collection = _self.db_connection.get_collection("category_mappings")
             if collection is None:
                 raise Exception("Failed to connect to category_mappings collection")
@@ -170,7 +196,11 @@ class FinancialAnalyzer:
 
     def process_latest_json(self):
         """Delegate to the base analyzer's process_latest_json method"""
-        return self.analyzer.process_latest_json()
+        try:
+            return self.analyzer.process_latest_json()
+        except AttributeError as e:
+            self._log(f"Error: BankStatementProcessor missing process_latest_json: {str(e)}")
+            return pd.DataFrame()
 
     def get_monthly_trends(self, months: int = 6):
         """Get monthly spending trends - delegated to insights module"""

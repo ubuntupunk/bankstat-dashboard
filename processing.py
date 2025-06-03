@@ -4,13 +4,14 @@ import os
 import streamlit as st
 from datetime import datetime
 from io import StringIO
-
+import logging
 
 class BankStatementProcessor:
     """Handles bank statement processing and data extraction"""
     
     def __init__(self):
         self.json_file_path = "latest_bank_statement.json"
+        logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
     
     @st.cache_data
     def load_latest_bank_statement(_self):
@@ -22,7 +23,7 @@ class BankStatementProcessor:
                 
                 df = _self.extract_tables_to_dataframe(json_data)
                 if not df.empty:
-                    # Ensure 'date' column is datetime and handle missing 'debits'/'credits'
+                    # Ensure 'date' column is datetime and handle missing columns
                     if 'date' in df.columns:
                         df['date'] = pd.to_datetime(df['date'], errors='coerce')
                     
@@ -37,17 +38,28 @@ class BankStatementProcessor:
                     else:
                         df['credits'] = pd.to_numeric(df['credits'], errors='coerce').fillna(0.0)
                     
+                    # Add description if missing
+                    if 'description' not in df.columns:
+                        df['description'] = 'Unknown'
+                    
                     # Add category column if it doesn't exist
                     if 'category' not in df.columns:
                         df['category'] = 'Uncategorized'
                     
+                    logging.debug(f"Loaded DataFrame columns: {df.columns.tolist()}")
                     return df
             
-            return pd.DataFrame()  # Return empty DataFrame if no data
+            logging.warning("No bank statement JSON file found")
+            return pd.DataFrame()
         
         except Exception as e:
+            logging.error(f"Error loading transaction data: {str(e)}")
             st.error(f"Error loading transaction data: {str(e)}")
             return pd.DataFrame()
+    
+    def process_latest_json(self):
+        """Process the latest JSON bank statement and return a standardized DataFrame."""
+        return self.load_latest_bank_statement()
     
     def extract_tables_to_dataframe(self, json_data):
         """Extract tables from JSON data and convert to DataFrame"""
@@ -66,26 +78,59 @@ class BankStatementProcessor:
                 combined_df = pd.concat(all_tables, ignore_index=True)
                 combined_df.columns = combined_df.columns.astype(str)  # Ensure all column names are strings
                 
+                # Log raw column names for debugging
+                logging.debug(f"Raw DataFrame columns: {combined_df.columns.tolist()}")
+                
+                # Standardize column names
+                column_mapping = {
+                    'Date': 'date',
+                    'Transaction Date': 'date',
+                    'Trans Date': 'date',
+                    'Description': 'description',
+                    'Details': 'description',
+                    'Trans Details': 'description',
+                    'Debit': 'debits',
+                    'Debits': 'debits',
+                    'Credit': 'credits',
+                    'Credits': 'credits',
+                    'Balance': 'balance',
+                    'Running Balance': 'balance',
+                    'Saldo': 'balance'
+                }
+                combined_df = combined_df.rename(columns={k: v for k, v in column_mapping.items() if k in combined_df.columns})
+                
+                # Ensure required columns
+                required_columns = ['date', 'description', 'debits', 'credits', 'balance']
+                for col in required_columns:
+                    if col not in combined_df.columns:
+                        combined_df[col] = 'Unknown' if col == 'description' else 0.0
+                
                 # Process Balance/Running Total
                 balance_col = self._find_balance_column(combined_df)
-                if balance_col:
+                if balance_col and balance_col != 'balance':
                     combined_df = self._process_balance_column(combined_df, balance_col)
                 else:
-                    st.warning("Balance column not found in extracted tables.")
-                    combined_df['balance'] = 0.0
+                    combined_df['balance'] = pd.to_numeric(combined_df['balance'], errors='coerce').fillna(0.0)
                 
                 # Ensure numeric columns
                 combined_df = self._ensure_numeric_columns(combined_df)
+                
+                # Ensure date is datetime
+                if 'date' in combined_df.columns:
+                    combined_df['date'] = pd.to_datetime(combined_df['date'], errors='coerce')
                 
                 # Add category column if not exists
                 if 'category' not in combined_df.columns:
                     combined_df['category'] = 'Uncategorized'
                 
+                logging.debug(f"Processed DataFrame columns: {combined_df.columns.tolist()}")
                 return combined_df
             
+            logging.warning("No tables found in JSON data")
             return pd.DataFrame()
         
         except Exception as e:
+            logging.error(f"Error extracting tables: {str(e)}")
             st.error(f"Error extracting tables: {str(e)}")
             return pd.DataFrame()
     

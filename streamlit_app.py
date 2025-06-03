@@ -337,7 +337,7 @@ else:
                                 st.write(f"- Error type: {type(e).__name__}")
                                 st.write(f"- Error message: {str(e)}")
 
-            # Save to Database button (only shown if PDF was processed successfully)
+                    # Save to Database button (only shown if PDF was processed successfully)
                     if st.session_state.processed_json:
                         with st.status("Database Upload Status", expanded=True) as status:
                             if st.button("💾 Save to Database", key="save_to_db_button"):
@@ -395,7 +395,7 @@ else:
                                     except Exception as debug_e:
                                         st.write(f"- Additional debug error: {str(debug_e)}")
                     else:
-                        st.info("Please process the PDF first before saving to database.") 
+                        st.info("Please process the PDF first before saving to database.")
 
         elif tab_selection == "📊 View Dashboard":
             st.header("📊 Financial Dashboard")
@@ -453,6 +453,30 @@ else:
                             for doc in documents:
                                 df = processor.extract_tables_to_dataframe(doc)
                                 if not df.empty:
+                                    # Standardize column names
+                                    column_mapping = {
+                                        'Date': 'date',
+                                        'Transaction Date': 'date',
+                                        'Trans Date': 'date',
+                                        'Description': 'description',
+                                        'Details': 'description',
+                                        'Trans Details': 'description',
+                                        'Debit': 'debits',
+                                        'Debits': 'debits',
+                                        'Credit': 'credits',
+                                        'Credits': 'credits',
+                                        'Balance': 'balance',
+                                        'Running Balance': 'balance',
+                                        'Saldo': 'balance'
+                                    }
+                                    df = df.rename(columns=column_mapping)
+                                    
+                                    # Ensure required columns exist
+                                    required_columns = ['date', 'description', 'debits', 'credits', 'balance']
+                                    for col in required_columns:
+                                        if col not in df.columns:
+                                            df[col] = 'Unknown' if col == 'description' else 0.0
+                                    
                                     # Filter by actual transaction dates
                                     if 'date' in df.columns:
                                         df['date'] = pd.to_datetime(df['date'], errors='coerce')
@@ -463,7 +487,7 @@ else:
                                     
                                     if not df.empty:
                                         transactions_df = pd.concat([transactions_df, df], ignore_index=True)
-                            
+                        
                             if not transactions_df.empty:
                                 # Remove duplicates and sort
                                 transactions_df = transactions_df.drop_duplicates().sort_values('date' if 'date' in transactions_df.columns else transactions_df.columns[0])
@@ -471,7 +495,8 @@ else:
                                     'source': 'Database',
                                     'documents_found': len(documents),
                                     'transactions_loaded': len(transactions_df),
-                                    'date_range': f"{start_date} to {end_date}"
+                                    'date_range': f"{start_date} to {end_date}",
+                                    'columns': transactions_df.columns.tolist()
                                 }
                             else:
                                 st.warning(f"No transactions found in database for date range {start_date} to {end_date}")
@@ -490,6 +515,30 @@ else:
                         statement_info = processor.get_statement_info()
                         
                         if not transactions_df.empty and statement_info:
+                            # Standardize column names
+                            column_mapping = {
+                                'Date': 'date',
+                                'Transaction Date': 'date',
+                                'Trans Date': 'date',
+                                'Description': 'description',
+                                'Details': 'description',
+                                'Trans Details': 'description',
+                                'Debit': 'debits',
+                                'Debits': 'debits',
+                                'Credit': 'credits',
+                                'Credits': 'credits',
+                                'Balance': 'balance',
+                                'Running Balance': 'balance',
+                                'Saldo': 'balance'
+                            }
+                            transactions_df = transactions_df.rename(columns=column_mapping)
+                            
+                            # Ensure required columns exist
+                            required_columns = ['date', 'description', 'debits', 'credits', 'balance']
+                            for col in required_columns:
+                                if col not in transactions_df.columns:
+                                    transactions_df[col] = 'Unknown' if col == 'description' else 0.0
+                            
                             # Check if local file date range overlaps with selected range
                             period = statement_info.get('period', {})
                             if period.get('start') and period.get('end'):
@@ -521,7 +570,8 @@ else:
                                 'filename': statement_info['filename'],
                                 'file_period': f"{period.get('start', 'Unknown')} to {period.get('end', 'Unknown')}",
                                 'transactions_loaded': len(transactions_df),
-                                'selected_range': f"{start_date} to {end_date}"
+                                'selected_range': f"{start_date} to {end_date}",
+                                'columns': transactions_df.columns.tolist()
                             }
                         
                 except Exception as e:
@@ -529,7 +579,7 @@ else:
             
             # Display data info
             if data_info:
-                with st.expander("📋 Data Source Information", expanded=False):
+                with st.expander("📋 Data Source Information", expanded=True):
                     for key, value in data_info.items():
                         st.write(f"**{key.replace('_', ' ').title()}:** {value}")
 
@@ -559,13 +609,18 @@ else:
                 # Transaction details
                 st.subheader("💳 Recent Transactions")
                 try:
-                    # Display top 20 transactions
+                    # Display top 20 transactions with available columns
                     display_columns = ['date', 'description', 'debits', 'credits', 'balance']
                     if 'category' in transactions_df.columns:
                         display_columns.append('category')
                     
-                    display_df = transactions_df.head(20)[display_columns]
-                    st.dataframe(display_df, use_container_width=True)
+                    # Filter to only available columns
+                    display_columns = [col for col in display_columns if col in transactions_df.columns]
+                    if display_columns:
+                        display_df = transactions_df.head(20)[display_columns]
+                        st.dataframe(display_df, use_container_width=True)
+                    else:
+                        st.warning("No valid columns available for transaction display")
 
                     # Show uncategorized transactions
                     if 'category' in transactions_df.columns:
@@ -573,7 +628,8 @@ else:
                         if not uncategorized.empty:
                             st.warning(f"⚠️ {len(uncategorized)} uncategorized transactions found")
                             with st.expander("View Uncategorized Transactions"):
-                                st.dataframe(uncategorized[display_columns[:-1]])  # Exclude category column
+                                uncategorized_columns = [col for col in display_columns if col != 'category']
+                                st.dataframe(uncategorized[uncategorized_columns])
                 except Exception as e:
                     st.error(f"Error displaying transactions: {str(e)}")
             else:
