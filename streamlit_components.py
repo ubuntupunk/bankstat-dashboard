@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 
+
 def create_metric_cards(metrics_data):
     """Create styled metric cards"""
     col1, col2, col3, col4 = st.columns(4)

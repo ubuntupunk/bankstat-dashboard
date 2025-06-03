@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import requests
+import os
 import re
 import json
 from datetime import datetime, timedelta
@@ -142,21 +143,21 @@ else:
 
     @st.cache_data
     def extract_tables_to_dataframe(_self, json_data):
-        """Extract tables from JSON data and convert to DataFrame"""
-        try:
-            all_tables = []
-            for page in json_data.get('elements', []):
-                if page.get('category') == 'table':
-                    html_table = page.get('content', {}).get('html', "")
-                    if html_table:
-                        df = pd.read_html(StringIO(html_table))[0]
-                        if isinstance(df.columns, pd.MultiIndex):
-                            df.columns = df.columns.map('_'.join)
-                        all_tables.append(df)
+            """Extract tables from JSON data and convert to DataFrame"""
+            try:
+                all_tables = []
+                for page in json_data.get('elements', []):
+                    if page.get('category') == 'table':
+                        html_table = page.get('content', {}).get('html', "")
+                        if html_table:
+                            df = pd.read_html(StringIO(html_table))[0]
+                            if isinstance(df.columns, pd.MultiIndex):
+                                df.columns = df.columns.map('_'.join)
+                            all_tables.append(df)
 
-            if all_tables:
-                combined_df = pd.concat(all_tables, ignore_index=True)
-                combined_df.columns = combined_df.columns.astype(str) # Ensure all column names are strings
+                if all_tables:
+                    combined_df = pd.concat(all_tables, ignore_index=True)
+                    combined_df.columns = combined_df.columns.astype(str) # Ensure all column names are strings
                 
                 # --- Start: Logic to find and process Balance/Running Total ---
                 # Find the balance column (case-insensitive, flexible matching)

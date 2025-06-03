@@ -83,7 +83,7 @@ class FinancialAnalyzer:
                     }
             else:
                 # If no category column, try to group by description patterns
-                transactions_df['simple_category'] = transactions_df['description'].apply(self._categorize_transaction)
+                transactions_df['simple_category'] = transactions_df['description'].apply(_self._categorize_transaction)
                 category_groups = transactions_df.groupby('simple_category')
                 for category, group in category_groups:
                     summary['expense_types'][category] = {
@@ -253,7 +253,7 @@ class FinancialAnalyzer:
                 if 'category' in row:
                     transaction['category'] = row['category']
                 else:
-                    transaction['category'] = self._categorize_transaction(row['description'])
+                    transaction['category'] = _self._categorize_transaction(row['description'])
                     
                 result.append(transaction)
             
@@ -267,7 +267,7 @@ class FinancialAnalyzer:
     def generate_budget_recommendations(_self) -> Dict:
         """Generate budget recommendations based on spending patterns"""
         try:
-            insights = self.get_category_insights()
+            insights = _self.get_category_insights()
             total_expenses = insights.get('total_expenses', 0)
             category_percentages = insights.get('category_percentages', {})
             
@@ -330,7 +330,7 @@ class FinancialAnalyzer:
     def get_spending_velocity(_self, days: int = 30) -> Dict:
         """Calculate spending velocity (rate of spending over time)"""
         try:
-            transactions_df = self.analyzer.process_latest_json()
+            transactions_df = _self.analyzer.process_latest_json()
             if transactions_df.empty:
                 return {}
             
@@ -359,3 +359,134 @@ class FinancialAnalyzer:
         except Exception as e:
             st.error(f"Error calculating spending velocity: {str(e)}")
             return {}
+
+    @st.cache_data
+    def calculate_monthly_average_balance(_self, start_date: str, end_date: str) -> Dict:
+        """Calculate monthly average balance for the given date range"""
+        try:
+            transactions_df = _self.analyzer.process_latest_json()
+            if transactions_df.empty:
+                return {'average_balance': 0, 'balance_trend': 'stable'}
+            
+            # Filter transactions by date range
+            transactions_df['date'] = pd.to_datetime(transactions_df['date'])
+            start_dt = pd.to_datetime(start_date)
+            end_dt = pd.to_datetime(end_date)
+            
+            filtered_df = transactions_df[
+                (transactions_df['date'] >= start_dt) & 
+                (transactions_df['date'] <= end_dt)
+            ]
+            
+            if filtered_df.empty:
+                return {'average_balance': 0, 'balance_trend': 'stable'}
+            
+            # Calculate average balance
+            if 'balance' in filtered_df.columns:
+                # Use actual balance column if available
+                avg_balance = filtered_df['balance'].mean()
+                balance_trend = 'increasing' if filtered_df['balance'].iloc[-1] > filtered_df['balance'].iloc[0] else 'decreasing'
+            else:
+                # Estimate balance from transactions
+                # This is a simplified calculation - in reality, you'd need opening balance
+                total_credits = filtered_df['credits'].sum()
+                total_debits = filtered_df['debits'].sum()
+                net_flow = total_credits - total_debits
+                
+                # Assume a reasonable starting balance for estimation
+                estimated_starting_balance = 10000  # You might want to make this configurable
+                avg_balance = estimated_starting_balance + (net_flow / 2)
+                balance_trend = 'increasing' if net_flow > 0 else 'decreasing'
+            
+            return {
+                'average_balance': avg_balance,
+                'balance_trend': balance_trend
+            }
+            
+        except Exception as e:
+            st.error(f"Error calculating monthly average balance: {str(e)}")
+            return {'average_balance': 0, 'balance_trend': 'stable'}
+    
+    @st.cache_data
+    def analyze_bank_fees(_self, start_date: str, end_date: str) -> Dict:
+        """Analyze bank fees for the given date range"""
+        try:
+            transactions_df = _self.analyzer.process_latest_json()
+            if transactions_df.empty:
+                return {'total_fees': 0, 'fee_types': {}, 'fee_count': 0}
+            
+            # Filter transactions by date range
+            transactions_df['date'] = pd.to_datetime(transactions_df['date'])
+            start_dt = pd.to_datetime(start_date)
+            end_dt = pd.to_datetime(end_date)
+            
+            filtered_df = transactions_df[
+                (transactions_df['date'] >= start_dt) & 
+                (transactions_df['date'] <= end_dt)
+            ]
+            
+            if filtered_df.empty:
+                return {'total_fees': 0, 'fee_types': {}, 'fee_count': 0}
+            
+            # Identify fee transactions based on description keywords
+            fee_keywords = ['fee', 'charge', 'service', 'atm', 'commission', 'monthly fee', 'transaction fee']
+            
+            # Create a mask for fee transactions
+            fee_mask = filtered_df['description'].str.lower().str.contains('|'.join(fee_keywords), na=False)
+            fee_transactions = filtered_df[fee_mask]
+            
+            if fee_transactions.empty:
+                return {'total_fees': 0, 'fee_types': {}, 'fee_count': 0}
+            
+            # Calculate total fees
+            total_fees = fee_transactions['debits'].sum()
+            
+            # Categorize fee types
+            fee_types = {}
+            for _, transaction in fee_transactions.iterrows():
+                description = transaction['description'].lower()
+                amount = transaction['debits']
+                
+                # Categorize based on keywords
+                if 'atm' in description:
+                    fee_type = 'ATM Fees'
+                elif 'service' in description or 'monthly' in description:
+                    fee_type = 'Service Fees'
+                elif 'transaction' in description:
+                    fee_type = 'Transaction Fees'
+                elif 'commission' in description:
+                    fee_type = 'Commission'
+                else:
+                    fee_type = 'Other Fees'
+                
+                if fee_type not in fee_types:
+                    fee_types[fee_type] = {'amount': 0, 'count': 0}
+                
+                fee_types[fee_type]['amount'] += amount
+                fee_types[fee_type]['count'] += 1
+            
+            return {
+                'total_fees': total_fees,
+                'fee_types': fee_types,
+                'fee_count': len(fee_transactions)
+            }
+            
+        except Exception as e:
+            st.error(f"Error analyzing bank fees: {str(e)}")
+            return {'total_fees': 0, 'fee_types': {}, 'fee_count': 0}
+    
+    @st.cache_data
+    def add_category_mapping(_self, term: str, category: str, category_type: str) -> bool:
+        """Add a new category mapping (placeholder implementation)"""
+        try:
+            # In a real implementation, you might store this in a database or config file
+            # For now, we'll just log it
+            _self._log(f"Added category mapping: '{term}' -> '{category}' ({category_type})")
+            return True
+        except Exception as e:
+            st.error(f"Error adding category mapping: {str(e)}")
+            return False
+
+    def process_latest_json(self):
+        """Delegate to the base analyzer's process_latest_json method"""
+        return self.analyzer.process_latest_json()
