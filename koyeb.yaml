@@ -1,0 +1,17 @@
+# Koyeb App Configuration
+# For more information, visit https://www.koyeb.com/docs/deploy/service-configuration
+apiVersion: v1
+name: bankstat-dashboard
+services:
+  - name: web
+    image: "koyeb/python"
+    ports:
+      - port: 8000
+        protocol: http
+    routes:
+      - path: /
+        port: 8000
+    env:
+      - key: PORT
+        value: "8000"
+    command: ["streamlit", "run", "streamlit_app.py", "--server.port=8000", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
