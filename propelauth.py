@@ -1,5 +1,6 @@
 import streamlit as st
 from propelauth_py import init_base_auth, UnauthorizedException
+from config import Config # Import the Config class
 
 class Auth:
     def __init__(self, auth_url, integration_api_key):
@@ -34,8 +35,9 @@ class Auth:
         st.logout()
 
 def init_auth():
-    auth_url = st.secrets["auth"]["auth_url"]
-    integration_api_key = st.secrets["auth"]["api_key"]
+    config = Config() # Instantiate Config
+    auth_url = config.auth_url
+    integration_api_key = config.auth_api_key
     return Auth(auth_url, integration_api_key)
 
 auth = init_auth()
