@@ -9,10 +9,7 @@ from tabs.upload_tab import render_upload_tab
 from tabs.dashboard_tab import render_dashboard_tab
 from tabs.settings_tab import render_settings_tab
 from tabs.tools_tab import render_tools_tab
-from propelauth import init_auth
-import streamlit as st
-
-auth = init_auth()
+from propelauth import auth # Import the auth object from propelauth.py
 
 # Configure page
 st.set_page_config(
@@ -35,15 +32,54 @@ def main():
         st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
         return
 
-    # Authentication with PropelAuth and Streamlit OIDC
-    if not st.user.is_logged_in:
-        st.button("Login", on_click=st.login)
+    # Handle OAuth2 callback
+    query_params = st.experimental_get_query_params()
+    auth_code = query_params.get("code")
+    returned_state = query_params.get("state")
+    
+    if auth_code and returned_state:
+        expected_state = st.session_state.get("oauth_state")
+        if not expected_state or returned_state[0] != expected_state:
+            st.error("CSRF attack detected or invalid state parameter. Please try logging in again.")
+            st.session_state.clear()
+            st.experimental_set_query_params()
+            st.experimental_rerun()
+            return
+
+        user_id = auth.exchange_code_for_user_id(auth_code[0])
+        if user_id:
+            st.session_state["user_id"] = user_id
+            # Clear query parameters and state from session to prevent re-processing
+            del st.session_state["oauth_state"]
+            st.experimental_set_query_params() # Clears all query params
+            st.experimental_rerun() # Rerun to update the UI
+            return # Stop execution until rerun completes
+        else:
+            st.error("Failed to exchange authorization code for user ID.")
+            st.session_state.clear() # Clear session state on failure
+            st.experimental_set_query_params() # Clear query params
+            st.experimental_rerun() # Rerun to clear error
+            return
+    elif auth_code or returned_state: # If only one of them is present, it's an incomplete or malformed callback
+        st.error("Incomplete authentication callback. Please try logging in again.")
+        st.session_state.clear()
+        st.experimental_set_query_params()
+        st.experimental_rerun()
+        return
+
+    # Authentication with PropelAuth
+    user_id = st.session_state.get("user_id")
+    if user_id is None:
+        st.warning("Please log in to access the dashboard.")
+        st.link_button("Login with PropelAuth", auth.get_login_url())
         st.stop()
 
-    user = auth.get_user(st.user.sub)
+    user = auth.get_user(user_id)
     if user is None:
-        st.error('Unauthorized')
-        st.stop()
+        st.error('Unauthorized. Please log in again.')
+        st.session_state.clear() # Clear session state if user is unauthorized
+        st.experimental_rerun() # Rerun to reflect logout
+        return # Stop execution until rerun completes
 
     # Sidebar
     with st.sidebar:
