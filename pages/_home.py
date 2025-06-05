@@ -25,4 +25,4 @@ with col2:
 
 st.markdown("---")
 if st.button("Terms of Service", key="home_tos_button"):
-    st.switch_page("pages/tos.py")
+    st.switch_page("_tos")

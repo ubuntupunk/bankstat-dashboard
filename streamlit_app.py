@@ -24,9 +24,9 @@ def main():
         return
 
     if st.user.is_logged_in:
-        st.switch_page("dashboard")
+        st.switch_page("_dashboard")
     else:
-        st.switch_page("home")
+        st.switch_page("_home")
 
 if __name__ == "__main__":
     main()

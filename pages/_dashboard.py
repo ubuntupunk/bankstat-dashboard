@@ -33,9 +33,9 @@ if st.user.is_logged_in:
     user = auth.get_user(st.user.sub)
     if not user:
         st.error("Failed to retrieve user information. Redirecting to home page.")
-        st.switch_page("home") # Redirect to home if user info can't be fetched
+        st.switch_page("_home") # Redirect to home if user info can't be fetched
 else:
-    st.switch_page("home") # Redirect to home if not logged in
+    st.switch_page("_home") # Redirect to home if not logged in
 
 # Ensure user is available before proceeding
 if user:
@@ -45,7 +45,6 @@ if user:
         st.header("User")
         st.text(f"Logged in as {user.email} (ID: {user.user_id})")
         st.link_button('Account', auth.get_account_url(), use_container_width=True)
-        st.button('Logout', on_click=lambda: st.switch_page("logout"), key="sidebar_logout_button") # Changed to "logout"
         st.header("Navigation")
 
         tab_selection = st.radio(
@@ -80,4 +79,4 @@ if user:
         render_settings_tab(processor, pdf_processor, analyzer, db_connection)
     elif tab_selection == "Logout":
         auth.log_out(st.user.sub)
-        st.switch_page("home")
+        st.switch_page("_home")
