@@ -9,10 +9,8 @@ from tabs.upload_tab import render_upload_tab
 from tabs.dashboard_tab import render_dashboard_tab
 from tabs.settings_tab import render_settings_tab
 from tabs.tools_tab import render_tools_tab
-from propelauth import init_auth
+from propelauth import auth
 import streamlit as st
-
-auth = init_auth()
 
 # Configure page
 st.set_page_config(
@@ -36,13 +34,18 @@ def main():
         return
 
     # Authentication with PropelAuth and Streamlit OIDC
-    if not st.user.is_logged_in:
-        st.button("Login", on_click=st.login)
-        st.stop()
+    # if not st.user.is_logged_in:
+    #     st.button("Login", on_click=st.login)
+    #     st.stop()
 
-    user = auth.get_user()
-    if user is None:
-        st.error('Unauthorized')
+    if st.user.is_logged_in:
+        user = auth.get_user(st.user.sub)
+        if user:
+            st.write(user)
+            st.button("Logout", on_click=st.logout)
+    else:
+        st.write("You are not logged in.")
+        st.button("Login", on_click=st.login)
         st.stop()
 
     # Sidebar
@@ -53,6 +56,12 @@ def main():
         st.link_button('Account', auth.get_account_url(), use_container_width=True)
         st.button('Logout', on_click=st.logout)
         st.header("Navigation")
+
+        # Add a link to the Terms of Service page
+        if st.sidebar.button("Terms of Service"):
+            import tos
+            tos.tos_page()
+
         tab_selection = st.radio(
             "Choose Action:",
             ["📊 View Dashboard", "📁 Upload & Process", "🧮 Tools", "⚙️ Settings"]

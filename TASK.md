@@ -3,6 +3,10 @@
 - [x] Handle cases where no bank statement JSON objects exist in the database. (Completed)
 - [x] Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
 - [ ] Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
+- [ ] on streamlit-cloud branch After password reset, failed to return to login page https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=mEPKtc2ENywcKAa4hBCLbhsvBYgzkp&nonce=wHrj4PeKNNnrYGp6i456&code_challenge=5bYtaMRjzgBswOtVt0MK32Q0bogpid58HmAkKcAM5tM&code_challenge_method=S256
+
+- [ ] on streamlit-cloud branch After login flow, failed to login https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=UhzY2V1OAFbeJCixK6Cs6Oc0FdzCqJ&nonce=Fd5bwewLt97sSDlORlTf&code_challenge=CeixcfcPgiPSPenV4lvneknOliPGD5gsafn-kJMc07w&code_challenge_method=S256
+
 
 ### Plan for Streamlit App Improvements (2025-06-02)
 
@@ -37,3 +41,4 @@ This plan aims to restore the full functionality of data persistence and correct
 - [x] Resolved "DataFrame has column names of mixed type" warning in 'streamlit_app.py'
 - [x] Ensured MongoDB upload debug messages are visible in 'streamlit_app.py'
 - [x] Add streamlit caching methods to persist data and db connections. Eg @st.cache_data (2025-06-02)
+- [ ] We need a TOS page (2025-06-05)

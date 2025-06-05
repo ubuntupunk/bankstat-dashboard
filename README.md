@@ -14,6 +14,7 @@ The BankStat Dashboard is a Streamlit application designed to help users analyze
 - Store and retrieve data from MongoDB
 - Calculate monthly average balance and other financial metrics
 - Display recent transactions with detailed information
+- Includes a Terms of Service page
 
 ## Installation
 
