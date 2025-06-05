@@ -90,6 +90,10 @@ class Auth:
 
 def init_auth():
     config = Config() # Instantiate Config
+    missing_secrets = config.validate_config()
+    if missing_secrets:
+        raise ValueError(f"Missing required configuration secrets: {', '.join(missing_secrets)}. Please ensure they are set as environment variables or in .streamlit/secrets.toml")
+
     auth_url = config.auth_url
     integration_api_key = config.auth_api_key
     client_id = config.auth_client_id

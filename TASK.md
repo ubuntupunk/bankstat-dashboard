@@ -1,8 +1,8 @@
 ### 2025-06-02
-- Handle 'StreamlitBankProcessor' object has no attribute 'process_latest_json' error. (Completed)
-- Handle cases where no bank statement JSON objects exist in the database. (Completed)
-- Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
-- Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
+- [x]Handle 'StreamlitBankProcessor' object has no attribute 'process_latest_json' error. (Completed)
+- [x]Handle cases where no bank statement JSON objects exist in the database. (Completed)
+- [x]Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
+- [ ]Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
 
 ### Plan for Streamlit App Improvements (2025-06-02)
 
@@ -31,10 +31,11 @@ This plan aims to restore the full functionality of data persistence and correct
 
 # Completed
 
-- Fixed unterminated string literal in 'financial_analyzer.py'
-- Ensured "Upload to Database" button uses MongoDB credentials from 'financial_analyzer.py'
-- Re-introduced debug and processing information for MongoDB upload in 'streamlit_app.py'
-- Resolved "DataFrame has column names of mixed type" warning in 'streamlit_app.py'
-- Ensured MongoDB upload debug messages are visible in 'streamlit_app.py'
-- Add streamlit caching methods to persist data and db connections. Eg @st.cache_data (2025-06-02)
-- Add .python service config with a run command for heroku/koyeb deployment (2025-06-04)
+- [x] Fixed unterminated string literal in 'financial_analyzer.py'
+- [x] Ensured "Upload to Database" button uses MongoDB credentials from 'financial_analyzer.py'
+- [x] Re-introduced debug and processing information for MongoDB upload in 'streamlit_app.py'
+- [x] Resolved "DataFrame has column names of mixed type" warning in 'streamlit_app.py'
+- [x] Ensured MongoDB upload debug messages are visible in 'streamlit_app.py'
+- [x] Add streamlit caching methods to persist data and db connections. Eg @st.cache_data (2025-06-02)
+- [x] Add .python service config with a run command for heroku/koyeb deployment (2025-06-04)
+- [x] Added explicit secret validation in 'propelauth.py' to prevent TypeError due to missing authentication API key on Streamlit Cloud. (2025-06-05)

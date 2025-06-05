@@ -33,7 +33,7 @@ def main():
         return
 
     # Handle OAuth2 callback
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     auth_code = query_params.get("code")
     returned_state = query_params.get("state")
     
