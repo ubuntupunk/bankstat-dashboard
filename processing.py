@@ -14,7 +14,7 @@ class StreamlitAnalytics:
         self.json_file_path = "latest_bank_statement.json"
         logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
     
-    #@st.cache_data
+    @st.cache_data(ttl=3600) # Cache for 1 hour
     def load_latest_bank_statement(self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:

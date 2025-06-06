@@ -113,10 +113,11 @@ class DatabaseConnection:
             self.logger.error(f"Failed to insert document: {str(e)}")
             raise
     
-    def find_documents(self, query: dict = None, collection_name: str = "statements", sort_by: list = None):
+    @st.cache_data(ttl=3600) # Cache for 1 hour
+    def find_documents(_self, query: dict = None, collection_name: str = "statements", sort_by: list = None):
         """Find documents in the specified collection"""
         try:
-            collection = self.get_collection(collection_name)
+            collection = _self.get_collection(collection_name)
             if collection is None:
                 raise Exception("Failed to connect to collection")
             
@@ -131,13 +132,14 @@ class DatabaseConnection:
             return list(cursor)
         
         except Exception as e:
-            self.logger.error(f"Failed to find documents: {str(e)}")
+            _self.logger.error(f"Failed to find documents: {str(e)}")
             raise
     
-    def count_documents(self, query: dict = None, collection_name: str = "statements"):
+    @st.cache_data(ttl=3600) # Cache for 1 hour
+    def count_documents(_self, query: dict = None, collection_name: str = "statements"):
         """Count documents in the specified collection"""
         try:
-            collection = self.get_collection(collection_name)
+            collection = _self.get_collection(collection_name)
             if collection is None:
                 return 0
             
@@ -147,7 +149,7 @@ class DatabaseConnection:
             return collection.count_documents(query)
         
         except Exception as e:
-            self.logger.error(f"Failed to count documents: {str(e)}")
+            _self.logger.error(f"Failed to count documents: {str(e)}")
             return 0
     
     def close_connection(self):
