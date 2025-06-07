@@ -24,10 +24,6 @@ user_id = user.sub if user and hasattr(user, 'sub') else "Unknown"
 # Initialize session state
 if "dashboard_navigation_radio" not in st.session_state:
     st.session_state.dashboard_navigation_radio = "📊 View Dashboard"
-if "dashboard_start_date" not in st.session_state:
-    st.session_state.dashboard_start_date = datetime.now() - timedelta(days=30)
-if "dashboard_end_date" not in st.session_state:
-    st.session_state.dashboard_end_date = datetime.now()
 
 # Sidebar
 with st.sidebar:
@@ -46,9 +42,9 @@ with st.sidebar:
     st.header("Date Range")
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input("From", st.session_state.dashboard_start_date, key="dashboard_start_date")
+        start_date = st.date_input("From", value=datetime.now() - timedelta(days=30), key="dashboard_start_date")
     with col2:
-        end_date = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
+        end_date = st.date_input("To", value=datetime.now(), key="dashboard_end_date")
 
 # Header
 st.markdown(f'<h1 class="main-header">🏦 Bankstat Dashboard - Welcome {user_email}</h1>', unsafe_allow_html=True)
