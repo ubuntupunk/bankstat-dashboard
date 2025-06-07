@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 logger.debug("Initializing Streamlit app")
 
 # Debug toggle
+# To enable debug mode, set a Streamlit secret:
+# [DEBUG]
+# debug = "on"
+# For example, in your .streamlit/secrets.toml file.
 DEBUG_MODE = st.secrets.get("DEBUG", {}).get("debug", "off").lower() == "on"
 
 def debug_write(*args, **kwargs):
@@ -75,7 +79,10 @@ if query_params.get("logout"):
     st.rerun()
 
 # Main app logic
-debug_write(f"DEBUG_MODE is: {DEBUG_MODE}")
+if DEBUG_MODE:
+    st.info("Debug mode is ON.")
+else:
+    st.caption("Debug mode is OFF.")
 
 if missing_secrets:
     st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
