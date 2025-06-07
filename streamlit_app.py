@@ -11,6 +11,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.debug("Initializing Streamlit app")
 
+# Debug toggle
+DEBUG_MODE = st.secrets.get("DEBUG", {}).get("debug", "off").lower() == "on"
+
+def debug_write(*args, **kwargs):
+    """Writes to Streamlit only if debug mode is on."""
+    if DEBUG_MODE:
+        st.write(*args, **kwargs)
+
 # Configure page - This must be the first Streamlit command
 st.set_page_config(
     page_title="Bankstat Dashboard",
@@ -67,6 +75,8 @@ if query_params.get("logout"):
     st.rerun()
 
 # Main app logic
+debug_write(f"DEBUG_MODE is: {DEBUG_MODE}")
+
 if missing_secrets:
     st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
 else:

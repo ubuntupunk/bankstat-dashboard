@@ -35,6 +35,7 @@ This plan aims to restore the full functionality of data persistence and correct
 
 # Please fix
 [] In Dashboard side panel, on first login. The widget with key "dashboard_start_date" was created with a default value but also had its value set via the Session State API. I need to refresh page for it to show up.
+[] Add a [DEBUG] debug=on special streamlit secret, and make our debug st.write statements toggle on or off.
 
 # Completed
 

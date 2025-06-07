@@ -25,9 +25,9 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                         transactions_df = date_range_filtered
             
             # Debug: Show data summary
-            st.write("**Debug: Transaction Data Summary**")
+            debug_write("**Debug: Transaction Data Summary**")
             st.write(transactions_df[['debits', 'credits', 'balance']].describe())
-            st.write("**Debug: Sample Transactions**")
+            debug_write("**Debug: Sample Transactions**")
             st.write(transactions_df[['date', 'description', 'debits', 'credits', 'balance']].head())
             
             # Get transaction summary with the filtered data

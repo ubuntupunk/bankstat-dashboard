@@ -42,7 +42,7 @@ def render_tools_tab():
                 help="Enter the initial investment amount in Rand."
             )
             dividend_rate = st.number_input(
-                "Dividend Rate (%)",
+                "Dividend Yield (%)",
                 min_value=0.0,
                 max_value=100.0,
                 value=5.0,
