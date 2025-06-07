@@ -27,6 +27,45 @@
     border-radius: 0.25rem;
     border: 1px solid;
 }
+
+.custom-metric-container {
+    /* Mimic st.metric container padding and layout */
+    padding: 1rem 0;
+}
+
+.custom-metric-label {
+    /* Style for the metric label */
+    font-size: 0.9rem;
+    color: grey; /* Streamlit's default label color */
+    margin-bottom: 0.2rem;
+}
+
+.custom-metric-value {
+    /* Style for the main metric value */
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.custom-metric-delta {
+    /* Style for the delta text and arrow */
+    font-size: 1rem;
+    display: flex; /* Use flexbox to align arrow and text */
+    align-items: center;
+}
+
+.custom-metric-delta.negative {
+    color: red; /* Red color for negative delta */
+}
+
+.custom-metric-delta.positive {
+    color: green; /* Green color for positive delta */
+}
+
+.custom-metric-delta .arrow {
+    /* Style for the arrow character */
+    margin-right: 0.3rem; /* Space between arrow and text */
+}
 .status-error {
     background-color: #f8d7da;
     border-color: #f5c6cb;
