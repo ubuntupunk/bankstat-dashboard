@@ -57,16 +57,16 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                 net_flow = total_income - total_expenses
                 if net_flow < 0:
                     st.metric(
-                        "📊 Net Flow", 
+                        "📊 Net Flow",
                         f"R {net_flow:,.2f}",
-                        delta=f"Negative (R {abs(net_flow):,.2f})",
-                        delta_color="inverse"
+                        delta=f"↓ Negative (R {abs(net_flow):,.2f})", # Keep explicit downward arrow
+                        # Removed delta_color="inverse"
                     )
                 else:
                     st.metric(
-                        "📊 Net Flow", 
+                        "📊 Net Flow",
                         f"R {net_flow:,.2f}",
-                        delta=f"Positive (R {net_flow:,.2f})",
+                        delta=f"↑ Positive (R {net_flow:,.2f})", # Keep explicit upward arrow
                         delta_color="normal"
                     )
 

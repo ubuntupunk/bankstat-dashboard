@@ -48,7 +48,7 @@ if 'code' in st.query_params and 'state' in st.query_params:
         st.error("Authentication failed. Please try again.")
 
 # Main login page
-st.title("Welcome to Bankstat Dashboard")
+st.title("Welcome to Bankstat")
 
 # If already authenticated, redirect to dashboard
 if st.session_state.get('authenticated'):

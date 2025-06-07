@@ -8,7 +8,7 @@ st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 # Main content
 st.image("bankstatgreen.png", use_container_width=True)
-st.title("Welcome to Bankstat Dashboard")
+st.title("Welcome to Bankstat")
 st.subheader("Your personal financial insights at a glance.")
 
 # Check if user is logged in

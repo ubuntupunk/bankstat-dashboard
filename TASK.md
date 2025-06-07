@@ -33,6 +33,9 @@
 
 This plan aims to restore the full functionality of data persistence and correct display of financial metrics, including balances and running totals, by ensuring the Streamlit app properly integrates with the `FinancialAnalyzer` and MongoDB.
 
+# Please fix
+[] In Dashboard side panel, on first login. The widget with key "dashboard_start_date" was created with a default value but also had its value set via the Session State API. I need to refresh page for it to show up.
+
 # Completed
 
 - [x] Fixed unterminated string literal in 'financial_analyzer.py'
