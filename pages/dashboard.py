@@ -39,7 +39,7 @@ with st.sidebar:
 
     tab_selection = st.radio(
         "Choose Action:",
-        ["📊 View Dashboard", "📁 Upload & Process", "🧮 Tools", "⚙️ Settings", "Logout"],
+        ["📊 View Dashboard", "📁 Upload & Process", "🧮 Tools", "⚙️ Settings", "🔒 Logout"],
         index=0,
         key="dashboard_navigation_radio"
     )
@@ -69,7 +69,6 @@ elif tab_selection == "🧮 Tools":
     render_tools_tab()
 elif tab_selection == "⚙️ Settings":
     render_settings_tab(processor, pdf_processor, analyzer, db_connection)
-elif tab_selection == "Logout":
+elif tab_selection == "🔒 Logout":
     auth.log_out(user_id)
     st.switch_page("logout")
-    
