@@ -16,6 +16,11 @@ with open("styles.css") as f:
     css = f.read()
 st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
+# Get user info from PropelAuth
+user = auth.get_user(st.user.sub) if hasattr(st, 'user') and hasattr(st.user, 'sub') else None
+user_email = user.email if user and hasattr(user, 'email') else "User"
+user_id = user.sub if user and hasattr(user, 'sub') else "Unknown"
+
 # Initialize session state
 if "dashboard_navigation_radio" not in st.session_state:
     st.session_state.dashboard_navigation_radio = "📊 View Dashboard"
@@ -28,7 +33,7 @@ if "dashboard_end_date" not in st.session_state:
 with st.sidebar:
     st.image("bankstatgreen.png", use_container_width=True)
     st.header("User")
-    st.text(f"Logged in as {st.user.email} (ID: {st.user.sub})")
+    st.text(f"Logged in as {user_email} (ID: {user_id})")
     st.link_button('Account', auth.get_account_url(), use_container_width=True)
     st.header("Navigation")
 
@@ -46,7 +51,7 @@ with st.sidebar:
         end_date = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
 
 # Header
-st.markdown(f'<h1 class="main-header">🏦 Bankstat Dashboard - Welcome {st.user.email}</h1>', unsafe_allow_html=True)
+st.markdown(f'<h1 class="main-header">🏦 Bankstat Dashboard - Welcome {user_email}</h1>', unsafe_allow_html=True)
 
 # Initialize components
 processor = StreamlitAnalytics()
@@ -65,5 +70,6 @@ elif tab_selection == "🧮 Tools":
 elif tab_selection == "⚙️ Settings":
     render_settings_tab(processor, pdf_processor, analyzer, db_connection)
 elif tab_selection == "Logout":
-    auth.log_out(st.user.sub)
-    st.switch_page("pages/_home.py")
+    auth.log_out(user_id)
+    st.switch_page("logout")
+    

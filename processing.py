@@ -15,14 +15,14 @@ class StreamlitAnalytics:
         logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
     
     @st.cache_data(ttl=3600) # Cache for 1 hour
-    def load_latest_bank_statement(self):
+    def load_latest_bank_statement(_self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:
-            if os.path.exists(self.json_file_path):
-                with open(self.json_file_path, "r") as f:
+            if os.path.exists(_self.json_file_path):
+                with open(_self.json_file_path, "r") as f:
                     json_data = json.load(f)
                 
-                df = self._extract_tables_to_dataframe(json_data)
+                df = _self._extract_tables_to_dataframe(json_data)
                 if not df.empty:
                     # Ensure 'date' column is datetime and handle missing columns
                     if 'date' in df.columns:

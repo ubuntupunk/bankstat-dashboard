@@ -11,7 +11,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.debug("Initializing Streamlit app")
 
-# Configure page
+# Configure page - This must be the first Streamlit command
 st.set_page_config(
     page_title="Bankstat Dashboard",
     layout="wide",
@@ -27,23 +27,47 @@ st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 config = Config()
 missing_secrets = config.validate_config()
 
-# Define pages
-pages = [
-    st.Page("pages/_home.py", title="Home"),
-    st.Page("pages/dashboard.py", title="Dashboard")
-]
-pg = st.navigation(pages)
+# Get current page
+current_page = st.query_params.get("page", ["home"])[0]
 
-# Navigation logic
+# Navigation
+pages = {
+    "home": "Home",
+    "dashboard": "Dashboard"
+}
+
+# Sidebar navigation
+with st.sidebar:
+    st.title("Navigation")
+    for page_id, page_name in pages.items():
+        if st.button(page_name, key=f"nav_{page_id}"):
+            st.query_params["page"] = page_id
+            st.rerun()
+
+# Authentication check
+def check_auth():
+    if not hasattr(st, 'user') or not st.user.is_logged_in:
+        if current_page != "home":  # Only redirect if not already on home
+            st.query_params["page"] = "home"
+            st.rerun()
+        return False
+    return True
+
+# Main app logic
 if missing_secrets:
     st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
-    pg.run()
-elif not st.user.is_logged_in:
-    st.switch_page("pages/_home.py")
 else:
-    user = auth.get_user(st.user.sub)
-    if not user:
-        st.error("Failed to retrieve user information.")
-        st.switch_page("pages/_home.py")
+    # Handle authentication and routing
+    if current_page == "home":
+        if check_auth():
+            st.rerun()
+        else:
+            st.rerun()
+    elif current_page == "dashboard":
+        if check_auth():
+            st.rerun()
+        else:
+            st.rerun()
     else:
-        st.switch_page("pages/dashboard.py")
+        st.warning("Page not found")
+        st.rerun()
