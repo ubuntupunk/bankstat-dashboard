@@ -6,6 +6,7 @@ from processing import StreamlitAnalytics
 from connection import DatabaseConnection
 from financial_analyzer import FinancialAnalyzer
 from pdf_processor import StreamlitBankProcessor
+from utils import debug_write
 from tabs.upload_tab import render_upload_tab
 from tabs.dashboard_tab import render_dashboard_tab
 from tabs.settings_tab import render_settings_tab
@@ -63,7 +64,7 @@ analyzer = FinancialAnalyzer(base_analyzer=processor)
 if tab_selection == "📁 Upload & Process":
     render_upload_tab(pdf_processor, processor, db_connection)
 elif tab_selection == "📊 View Dashboard":
-    st.write("Debug: Calling render_dashboard_tab")
+    debug_write("Debug: Calling render_dashboard_tab")
     render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
 elif tab_selection == "🧮 Tools":
     render_tools_tab()
