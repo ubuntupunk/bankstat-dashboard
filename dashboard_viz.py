@@ -48,12 +48,25 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                 avg_balance = transactions_df['balance'].mean() if 'balance' in transactions_df.columns else 0
 
             with col1:
-                st.metric("💰 Total Income", f"R {total_income:,.2f}")
+                # Total Income (no delta)
+                st.write(f"""
+                <div class="custom-metric-container">
+                    <div class="custom-metric-label">💰 Total Income</div>
+                    <div class="custom-metric-value">R {total_income:,.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col2:
-                st.metric("💸 Total Expenses", f"R {total_expenses:,.2f}")
+                # Total Expenses (no delta)
+                st.write(f"""
+                <div class="custom-metric-container">
+                    <div class="custom-metric-label">💸 Total Expenses</div>
+                    <div class="custom-metric-value">R {total_expenses:,.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col3:
+                # Net Flow (with delta)
                 net_flow = total_income - total_expenses
                 if net_flow < 0:
                     st.write(f"""
@@ -77,7 +90,13 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                     """, unsafe_allow_html=True)
 
             with col4:
-                st.metric("🏦 Avg Balance", f"R {avg_balance:,.2f}")
+                # Avg Balance (no delta)
+                st.write(f"""
+                <div class="custom-metric-container">
+                    <div class="custom-metric-label">🏦 Avg Balance</div>
+                    <div class="custom-metric-value">R {avg_balance:,.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
             with col1:
                 st.metric("💰 Total Income", "R 0.00")
