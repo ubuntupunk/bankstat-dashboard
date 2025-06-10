@@ -1,12 +1,11 @@
 import streamlit as st
 from cerebras.cloud.sdk import Cerebras
-import os
-from dotenv import load_dotenv
 from utils import debug_write
+from config import Config
 
 # Load environment variables
-load_dotenv()
-api_key = os.getenv("CEREBRAS_API_KEY")
+config = Config()
+api_key = config.cerebras_api_key
 
 def render_ai_advisor_tab() -> None:
     """
@@ -64,6 +63,7 @@ def render_ai_advisor_tab() -> None:
         You are Bankstat, a financial advisor with expertise in household budgets, saving money, and investing for retirement.
         Provide accurate, clear, and actionable advice for the following query: '{user_query}'.
         Base your response on general financial principles.
+        All currency figures are in Rands (ZAR), unless specifically requested.
         Do not provide advice that involves illegal or unethical practices.
         Do not provide advice that is not based on the data provided to you.
         Do not provide anything outside of the subject matter.

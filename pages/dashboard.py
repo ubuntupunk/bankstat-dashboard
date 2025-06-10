@@ -42,7 +42,7 @@ with st.sidebar:
 
     tab_selection = st.radio(
         "Choose Action:",
-        ["📊 View Dashboard", "📁 Upload & Process", "🎯 Goals", "🧮 Tools", "Ask Bankstat", "⚙️ Settings", "🔒 Logout"],
+        ["Ask Bankstat", "📊 View Dashboard", "📁 Upload & Process", "🎯 Goals", "🧮 Tools", "⚙️ Settings", "🔒 Logout"],
         index=0,
         key="dashboard_navigation_radio"
     )
@@ -65,6 +65,8 @@ analyzer = FinancialAnalyzer(base_analyzer=processor)
 # Render tab content
 if tab_selection == "📁 Upload & Process":
     render_upload_tab(pdf_processor, processor, db_connection)
+elif tab_selection == "Ask Bankstat":
+    render_ai_advisor_tab()
 elif tab_selection == "📊 View Dashboard":
     debug_write("Debug: Calling render_dashboard_tab")
     render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
@@ -72,8 +74,6 @@ elif tab_selection == "🎯 Goals":
     render_goals_tab()
 elif tab_selection == "🧮 Tools":
     render_tools_tab()
-elif tab_selection == "Ask Bankstat":
-    render_ai_advisor_tab()
 elif tab_selection == "⚙️ Settings":
     render_settings_tab(processor, pdf_processor, analyzer, db_connection)
 elif tab_selection == "🔒 Logout":
