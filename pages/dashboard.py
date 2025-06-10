@@ -11,6 +11,7 @@ from tabs.upload_tab import render_upload_tab
 from tabs.dashboard_tab import render_dashboard_tab
 from tabs.settings_tab import render_settings_tab
 from tabs.tools_tab import render_tools_tab
+from tabs.goals_tab import render_goals_tab
 
 # CSS
 with open("styles.css") as f:
@@ -40,7 +41,7 @@ with st.sidebar:
 
     tab_selection = st.radio(
         "Choose Action:",
-        ["📊 View Dashboard", "📁 Upload & Process", "🧮 Tools", "⚙️ Settings", "🔒 Logout"],
+        ["📊 View Dashboard", "📁 Upload & Process", "🎯 Goals", "🧮 Tools", "⚙️ Settings", "🔒 Logout"],
         index=0,
         key="dashboard_navigation_radio"
     )
@@ -66,6 +67,8 @@ if tab_selection == "📁 Upload & Process":
 elif tab_selection == "📊 View Dashboard":
     debug_write("Debug: Calling render_dashboard_tab")
     render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
+elif tab_selection == "🎯 Goals":
+    render_goals_tab()
 elif tab_selection == "🧮 Tools":
     render_tools_tab()
 elif tab_selection == "⚙️ Settings":

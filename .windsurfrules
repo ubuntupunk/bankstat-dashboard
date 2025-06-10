@@ -26,11 +26,14 @@ max_function_length = 50
 -- Encourage modular code with separate files for utilities, models, and data handling
 modular_code = true
 file_structure = [
-    "app.py",                # Main Streamlit app entry point
+    "app.py",               # Main Streamlit app entry point
     "utils/*.py",           # Utility functions (data processing, helpers)
     "components/*.py",      # Streamlit components and widgets
     "models/*.py",          # Machine learning models or data logic
     "data/*.py"             # Data loading and preprocessing
+    "tabs/*.py"             # Streamlit tabs
+    "docs/*.md"             # Documentation
+    "pages/*.py"            # Streamlit pages
 ]
 
 [rules.streamlit]

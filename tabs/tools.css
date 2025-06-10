@@ -1,3 +1,12 @@
+
+.tools-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    color: white;
+}
+
 .calculator-container {
     background-color: #f9fafb;
     padding: 1.5rem;
