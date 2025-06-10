@@ -38,7 +38,7 @@ def render_upload_tab(pdf_processor, processor, db_connection):
 
                             # Display extracted data
                             st.subheader("📊 Extracted Data Preview")
-                            df = processor.extract_tables_to_dataframe(json_data)
+                            df = processor.process_latest_json()
                             if not df.empty:
                                 st.dataframe(df.head(10), use_container_width=True)
                             else:

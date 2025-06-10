@@ -80,7 +80,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
                     if documents:
                         for doc in documents:
                             debug_write(f"Processing document with keys: {list(doc.keys())}")
-                            df = processor.extract_tables_to_dataframe(doc)
+                            df = processor.process_latest_json()
                             if not df.empty:
                                 # Standardize column names
                                 column_mapping = {
