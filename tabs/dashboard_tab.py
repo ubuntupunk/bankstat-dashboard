@@ -1,21 +1,22 @@
 import streamlit as st
 import pandas as pd
 from dashboard_viz import create_dashboard_metrics, create_expense_breakdown_chart, create_cash_flow_chart
+from utils import debug_write
 
 def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
     st.header("📊 Financial Dashboard")
-    st.write("Debug: Entered render_dashboard_tab")
+    debug_write("Entered render_dashboard_tab")
 
     # Check data availability
     local_available = processor.get_statement_info() is not None
-    st.write(f"Debug: Local data available: {local_available}")
+    debug_write(f"Local data available: {local_available}")
     db_available = False
     try:
         doc_count = db_connection.count_documents()
         db_available = doc_count > 0
-        st.write(f"Debug: Database documents count: {doc_count}")
+        debug_write(f"Database documents count: {doc_count}")
     except Exception as e:
-        st.error(f"Debug: Database check failed: {str(e)}")
+        debug_write(f"ERROR: Database check failed: {str(e)}") # Changed from st.error for debug purposes
     
     # Data source selection
     col1, col2 = st.columns([3, 1])
@@ -74,11 +75,11 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
                         ]
                     }
                     documents = db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
-                    st.write(f"Debug: Found {len(documents)} document(s) in database")
+                    debug_write(f"Found {len(documents)} document(s) in database")
                     
                     if documents:
                         for doc in documents:
-                            st.write(f"Debug: Processing document with keys: {list(doc.keys())}")
+                            debug_write(f"Processing document with keys: {list(doc.keys())}")
                             df = processor.extract_tables_to_dataframe(doc)
                             if not df.empty:
                                 # Standardize column names
@@ -125,7 +126,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
                             'date_range': f"{start_date} to {end_date}",
                             'columns': transactions_df.columns.tolist()
                         }
-                        st.write(f"Debug: transactions_df shape: {transactions_df.shape}")
+                        debug_write(f"transactions_df shape: {transactions_df.shape}")
                     else:
                         st.warning(f"No transactions found in database for date range {start_date} to {end_date}")
                         st.info("Try uploading a bank statement in the 'Upload & Process' tab.")
@@ -139,7 +140,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
                 with st.spinner("Loading data from local file..."):
                     transactions_df = processor.load_latest_bank_statement()
                     statement_info = processor.get_statement_info()
-                    st.write(f"Debug: Statement info: {statement_info}")
+                    debug_write(f"Statement info: {statement_info}")
                     
                     if not transactions_df.empty and statement_info:
                         # Standardize column names
@@ -200,7 +201,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
                             'selected_range': f"{start_date} to {end_date}",
                             'columns': transactions_df.columns.tolist()
                         }
-                        st.write(f"Debug: transactions_df shape: {transactions_df.shape}")
+                        debug_write(f"transactions_df shape: {transactions_df.shape}")
                     
             except Exception as e:
                 st.error(f"Error loading local file: {str(e)}")
@@ -213,7 +214,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     # Create metrics and charts
     if not transactions_df.empty:
-        st.write("Debug: Rendering metrics and charts")
+        debug_write("Rendering metrics and charts")
         create_dashboard_metrics(analyzer, start_date, end_date, transactions_df)
 
         # Charts section
@@ -222,7 +223,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
             st.subheader("💰 Expense Breakdown")
             try:
                 summary_data = analyzer.get_transaction_summary(transactions_df)
-                st.write(f"Debug: Summary data: {summary_data}")
+                debug_write(f"Summary data: {summary_data}")
                 create_expense_breakdown_chart(summary_data)
             except Exception as e:
                 st.error(f"Error loading expense data: {str(e)}")

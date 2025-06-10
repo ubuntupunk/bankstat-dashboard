@@ -8,6 +8,18 @@ import os
 import plotly.express as px
 import plotly.graph_objects as go
 
+# Debug toggle
+# To enable debug mode, set a Streamlit secret:
+# [DEBUG]
+# debug = "on"
+# For example, in your .streamlit/secrets.toml file.
+DEBUG_MODE = st.secrets.get("DEBUG", {}).get("debug", "off").lower() == "on"
+
+def debug_write(*args, **kwargs):
+    """Writes to Streamlit only if debug mode is on."""
+    if DEBUG_MODE:
+        st.write(*args, **kwargs)
+
 class StreamlitUtils:
     """Utility functions for Streamlit app"""
     

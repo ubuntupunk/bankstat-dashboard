@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+from utils import debug_write
 
 def render_upload_tab(pdf_processor, processor, db_connection):
     st.header("📁 Upload Bank Statement")
@@ -48,9 +49,9 @@ def render_upload_tab(pdf_processor, processor, db_connection):
                     except Exception as e:
                         st.error(f"Error processing PDF: {str(e)}")
                         st.session_state.processed_json = None
-                        st.write("🔧 Debug info:")
-                        st.write(f"- Error type: {type(e).__name__}")
-                        st.write(f"- Error message: {str(e)}")
+                        debug_write("🔧 Debug info:")
+                        debug_write(f"- Error type: {type(e).__name__}")
+                        debug_write(f"- Error message: {str(e)}")
 
             # Save to Database button (only shown if PDF was processed successfully)
             if st.session_state.processed_json:
@@ -97,17 +98,17 @@ def render_upload_tab(pdf_processor, processor, db_connection):
                             status.write(f"❌ MongoDB upload failed: {str(e)}")
                             status.update(label=f"❌ Upload Failed: {str(e)}", state="error")
                             st.error(f"❌ MongoDB upload failed: {str(e)}")
-                            st.write("🔧 Debug info:")
-                            st.write(f"- Error type: {type(e).__name__}")
-                            st.write(f"- Error message: {str(e)}")
+                            debug_write("🔧 Debug info:")
+                            debug_write(f"- Error type: {type(e).__name__}")
+                            debug_write(f"- Error message: {str(e)}")
                             try:
                                 test_collection = db_connection.get_collection()
                                 if test_collection:
-                                    st.write(f"- Collection name: {test_collection.name}")
-                                    st.write(f"- Database name: {test_collection.database.name}")
+                                    debug_write(f"- Collection name: {test_collection.name}")
+                                    debug_write(f"- Database name: {test_collection.database.name}")
                                 else:
-                                    st.write("- Collection connection returned None")
+                                    debug_write("- Collection connection returned None")
                             except Exception as debug_e:
-                                st.write(f"- Additional debug error: {str(debug_e)}")
+                                debug_write(f"- Additional debug error: {str(debug_e)}")
             else:
                 st.info("Please process the PDF first before saving to database.")

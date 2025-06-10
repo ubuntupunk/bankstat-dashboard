@@ -2,6 +2,7 @@ import streamlit as st
 import logging
 from config import Config
 from propelauth_utils import auth
+from utils import DEBUG_MODE, debug_write
 
 # Configure logging
 logging.basicConfig(
@@ -10,14 +11,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.debug("Initializing Streamlit app")
-
-# Debug toggle
-DEBUG_MODE = st.secrets.get("DEBUG", {}).get("debug", "off").lower() == "on"
-
-def debug_write(*args, **kwargs):
-    """Writes to Streamlit only if debug mode is on."""
-    if DEBUG_MODE:
-        st.write(*args, **kwargs)
 
 # Configure page - This must be the first Streamlit command
 st.set_page_config(
@@ -75,7 +68,10 @@ if query_params.get("logout"):
     st.rerun()
 
 # Main app logic
-debug_write(f"DEBUG_MODE is: {DEBUG_MODE}")
+if DEBUG_MODE:
+    st.info("Debug mode is ON.")
+else:
+    st.caption("Debug mode is OFF.")
 
 if missing_secrets:
     st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
