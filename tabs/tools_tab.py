@@ -61,12 +61,28 @@ def render_tools_tab():
                 key="dividend_tax_rate",
                 help="Enter the tax rate on dividends as a percentage."
             )
+            vat_rate = st.number_input(
+                "VAT Rate (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=15.0,
+                step=0.1,
+                format="%.1f",
+                key="vat_rate",
+                help="Enter the VAT rate on consumption as a percentage."
+            )
 
         # Calculations
         dividend = (initial_amount * dividend_rate) / 100
         dividend_tax = (dividend * dividend_tax_rate) / 100
         net_dividend = dividend - dividend_tax
         total_value = initial_amount + net_dividend
+        
+        # Consumption calculations
+        # When spending R1000, VAT is included in the price
+        # So actual value received = Amount / (1 + VAT rate)
+        vat_amount = (initial_amount * vat_rate) / (100 + vat_rate)
+        actual_value_received = initial_amount - vat_amount
 
         # Results Section
         with col2:
@@ -100,9 +116,10 @@ def render_tools_tab():
             """, unsafe_allow_html=True)
             st.markdown(f"""
                 <div style="color: #b91c1c; font-size: 0.875rem;">
-                    <div>Consumed: R{initial_amount:.2f}</div>
-                    <div>Remaining: R0.00</div>
-                    <div style="font-weight: bold; font-size: 1.125rem; padding-top: 0.25rem;">Loss: R{initial_amount:.2f}</div>
+                    <div>Amount Spent: R{initial_amount:.2f}</div>
+                    <div>VAT Paid: R{vat_amount:.2f}</div>
+                    <div>Actual Value Received: R{actual_value_received:.2f}</div>
+                    <div style="font-weight: bold; font-size: 1.125rem; padding-top: 0.25rem;">Net Value: R{actual_value_received:.2f}</div>
                 </div>
             """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -115,9 +132,10 @@ def render_tools_tab():
                     <span>Investment Advantage</span>
                 </div>
             """, unsafe_allow_html=True)
+            investment_advantage = total_value - actual_value_received
             st.markdown(f"""
                 <div style="color: #1e40af;">
-                    <span style="font-size: 1.125rem; font-weight: bold;">R{net_dividend:.2f}</span> additional value vs consumption
+                    <span style="font-size: 1.125rem; font-weight: bold;">R{investment_advantage:.2f}</span> additional value vs consumption
                 </div>
             """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -133,29 +151,38 @@ def render_tools_tab():
     %% Investment Branch
     B -->|Investment| C["Invested: R{initial_amount:.2f}"]
     C --> D["Dividend Generated: R{dividend:.2f}"]
-    D --> E["Dividend Tax ({dividend_tax_rate}%): R{dividend_tax:.2f}"]
+    D --> E["Dividend Tax ({dividend_tax_rate:.1f}%): -R{dividend_tax:.2f}"]
     E --> F["Net Dividend: R{net_dividend:.2f}"]
     F --> G["Total Value: R{total_value:.2f}"]
     
     %% Consumption Branch
-    B -->|Consumption| H["Immediate Consumption: R{initial_amount:.2f}"]
-    H --> I["Value Extracted: R{initial_amount:.2f}"]
-    I --> J["Remaining Value: R0.00"]
+    B -->|Consumption| H["Amount Spent: R{initial_amount:.2f}"]
+    H --> I["VAT Paid ({vat_rate:.1f}%): -R{vat_amount:.2f}"]
+    I --> J["Actual Value Received: R{actual_value_received:.2f}"]
+    J --> K["Net Value: R{actual_value_received:.2f}"]
+    
+    %% Comparison
+    G --> L["Investment Advantage: +R{investment_advantage:.2f}"]
+    K --> L
     
     %% Styling
-    classDef startNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef investmentPath fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
-    classDef consumptionPath fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef startNode fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000
+    classDef decision fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#000
+    classDef investmentPath fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef consumptionPath fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
     classDef endPositive fill:#4caf50,color:#fff,stroke:#2e7d32,stroke-width:3px
     classDef endNegative fill:#f44336,color:#fff,stroke:#c62828,stroke-width:3px
+    classDef comparison fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
     
     class A startNode
+    class B decision
     class C,D,E,F investmentPath
-    class H,I consumptionPath
+    class H,I,J consumptionPath
     class G endPositive
-    class J endNegative
+    class K endNegative
+    class L comparison
 """
         st.markdown('<div class="diagram-container">', unsafe_allow_html=True)
-        st_mermaid(mermaid_code, height=500)
+        st_mermaid(mermaid_code, height=600)
         st.markdown('</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
