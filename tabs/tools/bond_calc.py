@@ -75,13 +75,18 @@ def render_bond_calculator():
         st.write("The amount you need to pay each month to repay the bond over the term.")
         st.write(f"**Total Interest Paid:** R {total_interest:.2f}")
         st.write("The total amount of interest you will pay over the term of the bond.")
-        
-        # Option to view amortization schedule
-        if st.checkbox("View Amortization Schedule"):
-            st.markdown("### Amortization Schedule")
-            st.markdown("This table shows the breakdown of each payment into principal and interest, and the remaining balance after each payment.")
-            schedule = generate_amortization_schedule(P, r_annual, t)
-            df = pd.DataFrame(schedule)
-            st.dataframe(df)
     else:
         st.write("Enter values and click 'Calculate' to see your bond repayment details.")
+
+    # Option to view amortization schedule
+    if st.checkbox("View Amortization Schedule"):
+        # Ensure calculations are performed if checkbox is ticked without recalculating main results
+        if 'M' not in locals(): # Check if M is defined from a previous 'calculate' click
+            M = calculate_monthly_payment(P, r_annual, t)
+            n = t * 12
+        
+        st.markdown("### Amortization Schedule")
+        st.markdown("This table shows the breakdown of each payment into principal and interest, and the remaining balance after each payment.")
+        schedule = generate_amortization_schedule(P, r_annual, t)
+        df = pd.DataFrame(schedule)
+        st.dataframe(df)
