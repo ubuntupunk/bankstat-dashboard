@@ -38,6 +38,7 @@ This plan aims to restore the full functionality of data persistence and correct
 
 - [x] Our app needs Terms of Service tos.py and Privacy privacy.py pages (2025-06-11)
 - [x] Add CSV upload functionality to `tabs/upload_tab.py` to directly send data to MongoDB (2025-06-11)
+- [x] Our dashboard_tab.py needs to be tabbed. Current content ie Key Metrics should be a Key metrics tab. Add a new Services tab services_tab.py, this will allow our user to purchase services such as banking and insurance, by comparing the best rates available in the market. (2025-06-11)
 
 # Completed
 
