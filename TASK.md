@@ -37,6 +37,7 @@ This plan aims to restore the full functionality of data persistence and correct
 [x] In Dashboard side panel, on first login. The widget with key "dashboard_start_date" was created with a default value but also had its value set via the Session State API. I need to refresh page for it to show up.
 
 - [x] Our app needs Terms of Service tos.py and Privacy privacy.py pages (2025-06-11)
+- [x] Add CSV upload functionality to `tabs/upload_tab.py` to directly send data to MongoDB (2025-06-11)
 
 # Completed
 
