@@ -37,7 +37,7 @@ if "dashboard_end_date" not in st.session_state:
 
 # Sidebar
 with st.sidebar:
-    st.image("bankstatgreen.png", use_container_width=True)
+    st.image("static/bankstatgreen.png", use_container_width=True)
     st.header("User")
     st.text(f"Logged in as {user_email} (ID: {user_id})")
     st.link_button('Account', auth.get_account_url(), use_container_width=True)

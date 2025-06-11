@@ -40,6 +40,9 @@ This plan aims to restore the full functionality of data persistence and correct
 - [x] Add CSV upload functionality to `tabs/upload_tab.py` to directly send data to MongoDB (2025-06-11)
 - [x] Our dashboard_tab.py needs to be tabbed. Current content ie Key Metrics should be a Key metrics tab. Add a new Services tab services_tab.py, this will allow our user to purchase services such as banking and insurance, by comparing the best rates available in the market. (2025-06-11)
 
+### Discovered During Work
+- [ ] Enhance pre-login page in `streamlit_app.py` with `bankstatgreen.png` and improved CSS (2025-06-11)
+
 # Completed
 
 - [x] Fixed unterminated string literal in 'financial_analyzer.py'

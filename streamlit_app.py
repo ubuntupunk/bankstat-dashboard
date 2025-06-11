@@ -93,10 +93,48 @@ else:
     # Page routing
     if current_page == "home":
         if not st.session_state.authenticated:
-            # Show login form or redirect to PropelAuth
+            st.image("static/bankstatgreen.png", width=350, use_container_width=False)
             st.title("Welcome to Bankstat")
+            st.markdown(
+                """
+                <style>
+                    .stApp {
+                        background-color: #f0f2f6; /* Light grey background */
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                    }
+                    .stApp > header {
+                        display: none; /* Hide Streamlit header */
+                    }
+                    .stApp > footer {
+                        display: none; /* Hide Streamlit footer */
+                    }
+                    .stButton > button {
+                        background-color: #2E8B57;
+                        color: white;
+                        padding: 0.75rem 2rem;
+                        border-radius: 0.5rem;
+                        border: none;
+                        font-size: 1.2rem;
+                        cursor: pointer;
+                        transition: background-color 0.3s ease;
+                    }
+                    .stButton > button:hover {
+                        background-color: #3CB371; /* Lighter green on hover */
+                    }
+                    h1 {
+                        color: #2E8B57;
+                        font-size: 2.5rem;
+                        margin-bottom: 1rem;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
             if st.button("Login"):
-                # This should redirect to PropelAuth login
                 st.switch_page("pages/login.py")
         else:
             st.switch_page("pages/dashboard.py")
