@@ -13,7 +13,7 @@ from tabs.settings_tab import render_settings_tab
 from tabs.tools_tab import render_tools_tab
 from tabs.goals_tab import render_goals_tab
 from tabs.ai_expert_tab import render_ai_advisor_tab
-
+from components.footer import display_footer
 # CSS
 with open("styles.css") as f:
     css = f.read()
@@ -82,3 +82,5 @@ elif tab_selection == "⚙️ Settings":
 elif tab_selection == "🔒 Logout":
     auth.log_out(user_id)
     st.switch_page("logout")
+
+display_footer()
