@@ -15,27 +15,33 @@ def tos_page():
 
     The App provides tools for analyzing your bank statements and gaining insights into your financial activity.
 
-    ### 3. User Responsibilities
+    ### 3. Third-Party Services
+
+    The App utilizes a third-party service for processing uploaded PDF bank statements into machine-readable formats, such as CSV. This service is committed to high security standards and holds an information security management certificate issued by BSI.
+
+    The BankStat AI adviser within the App utilizes a Meta Llama model, which is streamed from a third-party hosting service. This AI agent has been specifically tailored to provide general financial information, and steps have been taken to restrict its discussion topics to remain within this scope.
+
+    ### 4. User Responsibilities
 
     You are responsible for maintaining the confidentiality of your account and password and for restricting access to your device. You agree to accept responsibility for all activities that occur under your account.
 
-    ### 4. Disclaimer of Warranties
+    ### 5. Disclaimer of Warranties
 
     The App is provided on an "as is" and "as available" basis. We make no warranties, express or implied, regarding the App.
 
-    ### 5. Limitation of Liability
+    ### 6. Limitation of Liability
 
     We will not be liable for any damages of any kind arising from the use of the App.
 
-    ### 6. Governing Law
+    ### 7. Governing Law
 
-    These Terms shall be governed by the laws of the State of [Your State], without regard to its conflict of law provisions.
+    These Terms shall be governed by the laws of the Republic of South Africa, without regard to its conflict of law provisions.
 
-    ### 7. Changes to Terms
+    ### 8. Changes to Terms
 
     We reserve the right to modify these Terms at any time. Your continued use of the App after any such changes constitutes your acceptance of the new Terms.
 
-    ### 8. Contact Information
+    ### 9. Contact Information
 
     If you have any questions about these Terms, please contact us at [Your Contact Information].
     """)

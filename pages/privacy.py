@@ -45,6 +45,10 @@ def privacy_policy_page():
     *   **Data Retention:** We retain your bank statement data and other information for as long as necessary to provide you with the services and for legitimate business purposes, such as complying with legal obligations, resolving disputes, and enforcing our agreements.
     *   **Deletion:** You may request the deletion of your account and associated data by contacting us. Please note that some information may be retained for legal or operational purposes.
 
+    **International Data Protection**
+
+    We strive to comply with applicable international and regional data protection laws, including but not limited to the Protection of Personal Information Act (POPIA) in South Africa, where relevant.
+
     **Changes to This Privacy Policy**
 
     We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date. You are advised to review this Privacy Policy periodically for any changes.
