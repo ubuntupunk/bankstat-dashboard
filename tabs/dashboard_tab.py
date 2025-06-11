@@ -6,6 +6,8 @@ from utils import debug_write
 from tabs.services_tab import render_services_tab
 from tabs.goals_tab import render_goals_tab
 from tabs.tools_tab import render_tools_tab
+from ml.ml_integration import MLCategoryIntegration
+import plotly.express as px
 
 def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
     # Load CSS from dashboard.css
@@ -26,7 +28,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     debug_write("Entered render_dashboard_tab")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Key Metrics", "Goals", "Services", "Tools"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Key Metrics", "Neural Net Categorisation", "Goals", "Services", "Tools"])
 
     with tab1:
         # Check data availability
@@ -284,8 +286,10 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
         else:
             st.info("No transaction data available for the selected criteria. Please upload a bank statement.")
     with tab2:
+        MLCategoryIntegration
+    with tab3:    
         render_goals_tab() 
-    with tab3:
-        render_services_tab()
     with tab4:
+        render_services_tab()
+    with tab5:
         render_tools_tab()    

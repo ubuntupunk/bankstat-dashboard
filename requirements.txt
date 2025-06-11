@@ -11,3 +11,5 @@ streamlit-authenticator
 streamlit-mermaid
 propelauth_py
 Authlib
+scikit-learn
+tensorflow-cpu
