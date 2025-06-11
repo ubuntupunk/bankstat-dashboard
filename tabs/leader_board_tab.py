@@ -4,7 +4,7 @@ def leader_board_tab():
     """
     Displays the leader board tab where users can vote for financial services and goals.
     """
-    st.title("Leader Board")
+    st.title("🏅 Leader Board")
     st.write("Vote for your favourite financial services and goals!")
 
     st.subheader("Favourite Financial Services")

@@ -4,7 +4,8 @@ import os
 from dashboard_viz import create_dashboard_metrics, create_expense_breakdown_chart, create_cash_flow_chart
 from utils import debug_write
 from tabs.services_tab import render_services_tab
-
+from tabs.goals_tab import render_goals_tab
+from tabs.tools_tab import render_tools_tab
 
 def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
     # Load CSS from dashboard.css
@@ -25,7 +26,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     debug_write("Entered render_dashboard_tab")
     
-    tab1, tab2 = st.tabs(["Key Metrics", "Services"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Key Metrics", "Goals", "Services", "Tools"])
 
     with tab1:
         # Check data availability
@@ -282,6 +283,9 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
                 st.error(f"Error displaying transactions: {str(e)}")
         else:
             st.info("No transaction data available for the selected criteria. Please upload a bank statement.")
-
     with tab2:
+        render_goals_tab() 
+    with tab3:
         render_services_tab()
+    with tab4:
+        render_tools_tab()    
