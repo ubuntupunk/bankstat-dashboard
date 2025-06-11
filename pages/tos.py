@@ -17,7 +17,7 @@ def tos_page():
 
     ### 3. Third-Party Services
 
-    The App utilizes a third-party service for processing uploaded PDF bank statements into machine-readable formats, such as CSV. This service is committed to high security standards and holds an information security management certificate issued by BSI.
+    The App utilizes a third-party service for processing uploaded PDF bank statements into machine-readable formats, such as CSV. This service is committed to high security standards, is a member of [AICPA/CIMA](https://www.aicpa-cima.com) and holds an information security management certificate issued by BSI.
 
     The BankStat AI adviser within the App utilizes a Meta Llama model, which is streamed from a third-party hosting service. This AI agent has been specifically tailored to provide general financial information, and steps have been taken to restrict its discussion topics to remain within this scope.
 
@@ -27,7 +27,7 @@ def tos_page():
 
     ### 5. Disclaimer of Warranties
 
-    The App is provided on an "as is" and "as available" basis. We make no warranties, express or implied, regarding the App.
+    The App is provided on an "as is" and "as available" basis. We make no warranties, express or implied, regarding the App. We adhere to professional standards, including those set forth by organizations like the AICPA (American Institute of Certified Public Accountants) which can be found at [https://www.aicpa-cima.com](https://www.aicpa-cima.com).
 
     ### 6. Limitation of Liability
 
