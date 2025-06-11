@@ -25,8 +25,11 @@ user_email = user.email if user and hasattr(user, 'email') else "User"
 user_id = user.sub if user and hasattr(user, 'sub') else "Unknown"
 
 # Initialize session state
+options = ["🧠 Ask Bankstat", "📊 My Dashboard", "🎯 Goals", "🧮 Tools", "📁 Upload & Process","⚙️ Settings", "🔒 Logout"]
+
 if "dashboard_navigation_radio" not in st.session_state:
-    st.session_state.dashboard_navigation_radio = "📊 View Dashboard"
+    st.session_state.dashboard_navigation_radio = options[0] # Default to the first option string
+
 if "dashboard_start_date" not in st.session_state:
     st.session_state.dashboard_start_date = datetime.now() - timedelta(days=30)
 if "dashboard_end_date" not in st.session_state:
@@ -42,8 +45,8 @@ with st.sidebar:
 
     tab_selection = st.radio(
         "Choose Action:",
-        ["Ask Bankstat", "📊 View Dashboard", "📁 Upload & Process", "🎯 Goals", "🧮 Tools", "⚙️ Settings", "🔒 Logout"],
-        index=0,
+        options, # Use the defined options list
+        index=options.index(st.session_state.dashboard_navigation_radio), # Set index based on session state value
         key="dashboard_navigation_radio"
     )
     st.header("Date Range")
@@ -65,9 +68,9 @@ analyzer = FinancialAnalyzer(base_analyzer=processor)
 # Render tab content
 if tab_selection == "📁 Upload & Process":
     render_upload_tab(pdf_processor, processor, db_connection)
-elif tab_selection == "Ask Bankstat":
+elif tab_selection == "🧠 Ask Bankstat":
     render_ai_advisor_tab()
-elif tab_selection == "📊 View Dashboard":
+elif tab_selection == "📊 My Dashboard":
     debug_write("Debug: Calling render_dashboard_tab")
     render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
 elif tab_selection == "🎯 Goals":

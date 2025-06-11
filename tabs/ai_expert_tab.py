@@ -8,6 +8,16 @@ config = Config()
 api_key = config.cerebras_api_key
 
 def render_ai_advisor_tab() -> None:
+    # Load CSS from tools.css
+    css_path = os.path.join(os.path.dirname(__file__), "ai_expert.css")
+    try:
+        with open(css_path, "r") as f:
+            css = f.read()
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error("ai_expert.css file not found. Please ensure it exists in the same directory as tools_tab.py.")
+        return
+
     """
     Renders the AI Financial Advisor tab in the Streamlit application.
     Initializes the Cerebras client, handles user input,
@@ -32,10 +42,15 @@ def render_ai_advisor_tab() -> None:
         return
 
     # Set up the Streamlit UI
-    st.title("🧠 AI Financial Advisor")
     st.markdown("""
-        <h3 style='color: #4CAF50;'>Ask about household budgets, saving money, or investing for retirement!</h3>
-        <p style='color: #666;'>Note: This AI provides general advice and is not a substitute for professional financial guidance.</p>
+    <div class="ai-expert-container">
+    <h1 style="margin: 0; font-size: 2rem; font-weight: bold;">🧠 AI Financial Advisor</h1>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+            <h3 style='color: #4CAF50;'>Ask about household budgets, saving money, or investing for retirement!</h3>
+            <p style='color: #666;'>Note: This AI provides general advice and is not a substitute for professional financial guidance.</p>
+            <p style='color: #666;'>While Bankstat anonymises user information, please do not provide any personal information. You own your own data.</p>
     """, unsafe_allow_html=True)
 
     # Initialize chat history in session state if not present

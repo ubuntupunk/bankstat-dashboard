@@ -94,7 +94,7 @@ else:
         if not st.session_state.authenticated:
             # Show login form or redirect to PropelAuth
             st.title("Welcome to Bankstat Dashboard")
-            if st.button("Login with PropelAuth"):
+            if st.button("Login"):
                 # This should redirect to PropelAuth login
                 st.switch_page("pages/login.py")
         else:

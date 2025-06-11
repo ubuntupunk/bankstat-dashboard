@@ -1,0 +1,7 @@
+.ai-expert-container {
+    background: linear-gradient(135deg,rgb(234, 232, 102) 0%,rgb(202, 19, 43) 100%);
+    padding: 2rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    color: white;
+}

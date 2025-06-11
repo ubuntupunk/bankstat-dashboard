@@ -35,7 +35,8 @@ This plan aims to restore the full functionality of data persistence and correct
 
 # Please fix
 [x] In Dashboard side panel, on first login. The widget with key "dashboard_start_date" was created with a default value but also had its value set via the Session State API. I need to refresh page for it to show up.
-[x] Add a [DEBUG] debug=on special streamlit secret, and make our debug st.write statements toggle on or off.
+
+- [x] Our app needs Terms of Service tos.py and Privacy privacy.py pages (2025-06-11)
 
 # Completed
 
@@ -45,4 +46,4 @@ This plan aims to restore the full functionality of data persistence and correct
 - [x] Resolved "DataFrame has column names of mixed type" warning in 'streamlit_app.py'
 - [x] Ensured MongoDB upload debug messages are visible in 'streamlit_app.py'
 - [x] Add streamlit caching methods to persist data and db connections. Eg @st.cache_data (2025-06-02)
-- [ ] We need a TOS page (2025-06-05)
+[x] Add a [DEBUG] debug=on special streamlit secret, and make our debug st.write statements toggle on or off.
