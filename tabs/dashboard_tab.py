@@ -28,7 +28,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     debug_write("Entered render_dashboard_tab")
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Key Metrics", "Neural Net Categorisation", "Goals", "Services", "Tools"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Key Metrics", "My Neural Net", "Goals", "Services", "Tools"])
 
     with tab1:
         # Check data availability
@@ -286,10 +286,11 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
         else:
             st.info("No transaction data available for the selected criteria. Please upload a bank statement.")
     with tab2:
-        MLCategoryIntegration
+        ml_integration = MLCategoryIntegration(analyzer)
+        ml_integration.render_ml_tab(processor)
     with tab3:    
         render_goals_tab() 
     with tab4:
         render_services_tab()
     with tab5:
-        render_tools_tab()    
+        render_tools_tab()

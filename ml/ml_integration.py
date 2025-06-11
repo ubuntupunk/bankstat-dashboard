@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from transaction_categorizer import TransactionCategorizer
+from ml.transaction_categorizer import TransactionCategorizer
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
@@ -14,7 +14,7 @@ class MLCategoryIntegration:
     
     def render_ml_tab(self, processor):
         """Render the ML categorization tab"""
-        st.header("🤖 AI Transaction Categorization")
+        st.header("🤖 Transaction Categorization with Local Machine Learning")
         
         # Model status
         model_info = self.categorizer.get_model_info()
@@ -225,7 +225,7 @@ class MLCategoryIntegration:
             for idx, row in display_df.iterrows():
                 col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.write(f"**{row['description']}** - ${abs(row.get('debits', 0) - row.get('credits', 0)):.2f}")
+                    st.write(f"**{row['description']}** - R{abs(row.get('debits', 0) - row.get('credits', 0)):.2f}")
                 with col2:
                     category = st.selectbox(
                         "Category",
