@@ -15,7 +15,7 @@ logger.debug("Initializing Streamlit app")
 
 # Configure page - This must be the first Streamlit command
 st.set_page_config(
-    page_title="Bankstat Dashboard",
+    page_title="Bankstat",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -94,7 +94,7 @@ else:
     if current_page == "home":
         if not st.session_state.authenticated:
             # Show login form or redirect to PropelAuth
-            st.title("Welcome to Bankstat Dashboard")
+            st.title("Welcome to Bankstat")
             if st.button("Login"):
                 # This should redirect to PropelAuth login
                 st.switch_page("pages/login.py")

@@ -1,0 +1,7 @@
+.dashboard-container {
+    background: linear-gradient(135deg,rgb(224, 148, 243) 0%,rgb(202, 19, 187) 100%);
+    padding: 2rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    color: white;
+}

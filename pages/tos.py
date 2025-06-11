@@ -5,7 +5,7 @@ def tos_page():
     st.write("""
     ## Terms of Service
 
-    These terms of service ("Terms") govern your use of the BankStat Dashboard application (the "App") provided by us. By using the App, you agree to be bound by these Terms.
+    These terms of service ("Terms") govern your use of the BankStat application (the "App") provided by us. By using the App, you agree to be bound by these Terms.
 
     ### 1. Acceptance of Terms
 
@@ -19,7 +19,7 @@ def tos_page():
 
     The App utilizes a third-party service for processing uploaded PDF bank statements into machine-readable formats, such as CSV. This service is committed to high security standards, is a member of [AICPA/CIMA](https://www.aicpa-cima.com) and holds an information security management certificate issued by BSI.
 
-    The BankStat AI adviser within the App utilizes a Meta Llama model, which is streamed from a third-party hosting service. This AI agent has been specifically tailored to provide general financial information, and steps have been taken to restrict its discussion topics to remain within this scope.
+    The BankStat AI adviser within the App utilizes a Meta Language model, which is streamed from a third-party hosting service. This AI agent has been specifically tailored to provide general financial information, and steps have been taken to restrict its discussion topics to remain within this scope.
 
     ### 4. User Responsibilities
 

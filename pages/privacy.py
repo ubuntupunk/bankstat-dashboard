@@ -8,7 +8,7 @@ def privacy_policy_page():
     st.title("🔒 Privacy Policy")
 
     st.markdown("""
-    This Privacy Policy describes how BankStat Dashboard ("we," "us," or "our") collects, uses, and discloses your information when you use our application.
+    This Privacy Policy describes how BankStat ("we," "us," or "our") collects, uses, and discloses your information when you use our application.
 
     **Information We Collect**
 

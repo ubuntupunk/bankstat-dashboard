@@ -9,7 +9,7 @@ def display_footer():
         """
         <div style="text-align: center; padding: 10px;">
             <p style="font-size: 0.9em; color: #888;">
-                © 2025 BankStat Dashboard. All rights reserved.
+                © 2025 BankStat. All rights reserved.
             </p>
             <p style="font-size: 0.8em;">
                 <a href="/tos" target="_self" style="color: #007bff; text-decoration: none; margin-right: 15px;">Terms of Service</a>

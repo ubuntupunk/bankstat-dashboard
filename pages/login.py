@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 # Set page config - must be first Streamlit command
 st.set_page_config(
-    page_title="Login - Bankstat Dashboard",
+    page_title="Login - Bankstat",
     layout="centered",
     initial_sidebar_state="collapsed"
 )

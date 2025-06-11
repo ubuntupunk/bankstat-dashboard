@@ -57,7 +57,7 @@ with st.sidebar:
         end_date = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
 
 # Header
-st.markdown(f'<h1 class="main-header">🏦 Bankstat Dashboard - Welcome {user_email}</h1>', unsafe_allow_html=True)
+st.markdown(f'<h1 class="main-header">🏦 Bankstat - Welcome {user_email}</h1>', unsafe_allow_html=True)
 
 # Initialize components
 processor = StreamlitAnalytics()

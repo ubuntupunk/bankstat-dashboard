@@ -1,4 +1,4 @@
-# BankStat Dashboard
+# BankStat
 
 A Streamlit app for analyzing bank statements and visualizing financial data.
 

@@ -1,12 +1,29 @@
 import streamlit as st
 import pandas as pd
+import os
 from dashboard_viz import create_dashboard_metrics, create_expense_breakdown_chart, create_cash_flow_chart
 from utils import debug_write
 
-def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
-    st.header("📊 Financial Dashboard")
-    debug_write("Entered render_dashboard_tab")
 
+def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
+    # Load CSS from dashboard.css
+    css_path = os.path.join(os.path.dirname(__file__), "dashboard.css")
+    try:
+        with open(css_path, "r") as f:
+            css = f.read()
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error("ai_expert.css file not found. Please ensure it exists in the same directory as tools_tab.py.")
+        return
+    
+    st.markdown("""
+    <div class="dashboard-container">
+        <h1 style="margin: 0; font-size: 2rem; font-weight: bold;">📊 Financial Dashboard</h1>
+        </div>
+     """, unsafe_allow_html=True)
+
+    debug_write("Entered render_dashboard_tab")
+     
     # Check data availability
     local_available = processor.get_statement_info() is not None
     debug_write(f"Local data available: {local_available}")
