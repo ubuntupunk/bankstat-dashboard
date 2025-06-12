@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Table
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Table, Boolean, Text
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
-from db import Base
+from db.db import Base
 import uuid
 
 # Association table for User-to-Role many-to-many relationship
@@ -17,17 +17,25 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    propelauth_user_id = Column(String, unique=True, nullable=False, index=True) # New: PropelAuth user ID
     email = Column(String, unique=True, nullable=False, index=True)
-    password = Column(String, nullable=False)
+    password = Column(String, nullable=False) # Keeping password for now as per previous decision
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     budgets = relationship('Budget', back_populates='user', cascade='all, delete-orphan')
     goals = relationship('Goal', back_populates='user', cascade='all, delete-orphan')
-    incentives = relationship('Incentive', back_populates='user', cascade='all, delete-orphan')
+    user_rewards = relationship('UserReward', back_populates='user', cascade='all, delete-orphan') # Updated relationship name
     transactions = relationship('Transaction', back_populates='user', cascade='all, delete-orphan')
     roles = relationship('Role', secondary=user_role, back_populates='users')
+    ai_chat_messages = relationship('AIChatMessage', back_populates='user', cascade='all, delete-orphan')
+    user_financial_metrics = relationship('UserFinancialMetric', back_populates='user', cascade='all, delete-orphan')
+    goal_progress = relationship('GoalProgress', back_populates='user', cascade='all, delete-orphan')
+    service_votes = relationship('ServiceVote', back_populates='user', cascade='all, delete-orphan')
+    appliances = relationship('Appliance', back_populates='user', cascade='all, delete-orphan')
+    energy_consumption = relationship('EnergyConsumption', back_populates='user', cascade='all, delete-orphan')
+
 
 class Role(Base):
     __tablename__ = 'roles'
@@ -52,9 +60,12 @@ class Goal(Base):
     risk_level = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    completed = Column(Boolean, default=False) # New
+    completed_at = Column(DateTime(timezone=True), nullable=True) # New
 
     # Relationships
     user = relationship('User', back_populates='goals')
+    goal_progress_entries = relationship('GoalProgress', back_populates='goal', cascade='all, delete-orphan') # New relationship
 
 class Transaction(Base):
     __tablename__ = 'transactions'
@@ -71,19 +82,7 @@ class Transaction(Base):
     # Relationships
     user = relationship('User', back_populates='transactions')
 
-class Incentive(Base):
-    __tablename__ = 'incentives'
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    points = Column(Integer, default=0, nullable=False)
-    reward = Column(String)
-    redeemed_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
-    # Relationships
-    user = relationship('User', back_populates='incentives')
+# Removed existing Incentive model as per plan
 
 class Budget(Base):
     __tablename__ = 'budgets'
@@ -100,3 +99,112 @@ class Budget(Base):
 
     # Relationships
     user = relationship('User', back_populates='budgets')
+
+# New Models from multi-user.md
+
+class AIChatMessage(Base):
+    __tablename__ = "ai_chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    role = Column(String, nullable=False) # "user" or "assistant"
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship('User', back_populates='ai_chat_messages') # New relationship
+
+class UserFinancialMetric(Base):
+    __tablename__ = "user_financial_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    metric_name = Column(String, nullable=False) # e.g., "total_income", "total_expenses", "net_flow", "savings_rate"
+    value = Column(Float, nullable=False)
+    date = Column(DateTime(timezone=True), server_default=func.now()) # Date for which the metric applies
+
+    user = relationship('User', back_populates='user_financial_metrics') # New relationship
+
+class GoalProgress(Base):
+    __tablename__ = "goal_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id", ondelete='CASCADE'), nullable=False) # Changed to UUID
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    progress_amount = Column(Float, nullable=False) # Amount contributed or current value
+
+    goal = relationship("Goal", back_populates='goal_progress_entries') # Updated relationship
+    user = relationship('User', back_populates='goal_progress') # New relationship
+
+class Incentive(Base): # This is the new global Incentive model
+    __tablename__ = "incentives"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    reward_value = Column(Float, nullable=False) # e.g., points, monetary value
+    criteria = Column(Text, nullable=True) # Description of how to earn the incentive
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user_rewards = relationship('UserReward', back_populates='incentive', cascade='all, delete-orphan') # New relationship
+
+class UserReward(Base): # This is the new user-specific reward tracking model
+    __tablename__ = "user_rewards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    incentive_id = Column(Integer, ForeignKey("incentives.id", ondelete='CASCADE'), nullable=False)
+    earned_at = Column(DateTime(timezone=True), server_default=func.now())
+    reward_amount = Column(Float, nullable=False) # Actual amount earned for this instance
+
+    user = relationship('User', back_populates='user_rewards') # New relationship
+    incentive = relationship("Incentive", back_populates='user_rewards') # New relationship
+
+class FinancialService(Base):
+    __tablename__ = "financial_services"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    service_votes = relationship('ServiceVote', back_populates='financial_service', cascade='all, delete-orphan') # New relationship
+
+class ServiceVote(Base):
+    __tablename__ = "service_votes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    service_id = Column(Integer, ForeignKey("financial_services.id", ondelete='CASCADE'), nullable=False)
+    vote_type = Column(String, nullable=False) # e.g., "upvote", "downvote", "recommend"
+    voted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship('User', back_populates='service_votes') # New relationship
+    financial_service = relationship("FinancialService", back_populates='service_votes') # New relationship
+
+class Appliance(Base):
+    __tablename__ = "appliances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    name = Column(String, nullable=False) # e.g., "Refrigerator", "Washing Machine"
+    appliance_type = Column(String, nullable=True) # e.g., "Kitchen", "Laundry"
+    power_rating_watts = Column(Float, nullable=True) # Power consumption in Watts
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    energy_consumption_entries = relationship('EnergyConsumption', back_populates='appliance', cascade='all, delete-orphan') # New relationship
+    user = relationship('User', back_populates='appliances') # New relationship
+
+class EnergyConsumption(Base):
+    __tablename__ = "energy_consumption"
+
+    id = Column(Integer, primary_key=True, index=True)
+    appliance_id = Column(Integer, ForeignKey("appliances.id", ondelete='CASCADE'), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True) # Changed to UUID
+    consumption_kwh = Column(Float, nullable=False) # Energy consumed in kWh for a period
+    consumption_date = Column(DateTime(timezone=True), nullable=False) # Date of consumption reading
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    appliance = relationship("Appliance", back_populates='energy_consumption_entries') # Updated relationship
+    user = relationship('User', back_populates='energy_consumption') # New relationship
