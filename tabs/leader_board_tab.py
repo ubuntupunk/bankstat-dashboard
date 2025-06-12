@@ -23,9 +23,11 @@ def leader_board_tab():
     # Initialize session state data
     initialize_leaderboard_data()
     
+    # Apply global CSS
+    st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+
     # Header
-    st.markdown(f"""
-        <style>{css_content}</style>
+    st.markdown("""
         <div class="goals-container">
             <h1 style="margin: 0; font-size: 2rem; font-weight: bold;">🏅 Community Leaderboard</h1>
             <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Vote for the best financial services and discover trending community goals</p>
@@ -41,16 +43,16 @@ def leader_board_tab():
     ])
     
     with tab1:
-        render_financial_services_voting()
+        render_financial_services_voting(css_content)
     
     with tab2:
-        render_community_goals()
+        render_community_goals(css_content)
     
     with tab3:
-        render_top_contributors()
+        render_top_contributors(css_content)
     
     with tab4:
-        render_voting_analytics()
+        render_voting_analytics(css_content)
 
 def initialize_leaderboard_data():
     """Initialize session state with sample data matching the database model."""
@@ -312,7 +314,7 @@ def initialize_leaderboard_data():
     if 'user_goal_likes' not in st.session_state:
         st.session_state.user_goal_likes = set()
 
-def render_financial_services_voting():
+def render_financial_services_voting(css_content):
     """Render financial services voting section."""
     st.markdown("### 🏦 Best Financial Services")
     st.markdown("Help the community by voting for the financial services you trust and recommend!")
@@ -484,7 +486,7 @@ def render_financial_services_voting():
             if user_vote:
                 st.markdown(f"<span style='color: #10b981; font-weight: bold;'>✓ You voted: {user_vote}</span>", unsafe_allow_html=True)
 
-def render_community_goals():
+def render_community_goals(css_content):
     """Render community goals section."""
     st.markdown("### 🎯 Trending Community Goals")
     st.markdown("Join popular financial goals and share your journey with the community!")
@@ -657,7 +659,7 @@ def render_community_goals():
         </div>
         """, unsafe_allow_html=True)
 
-def render_top_contributors():
+def render_top_contributors(css_content):
     """Render top contributors leaderboard."""
     st.markdown("### 👥 Top Contributors")
     st.markdown("Recognize our most active community members who help make our financial community thrive!")
@@ -774,7 +776,7 @@ def render_top_contributors():
             if st.button(f"💬 Message", key=f"message_{contributor['username']}"):
                 st.info(f"Message feature coming soon!")
 
-def render_voting_analytics():
+def render_voting_analytics(css_content):
     """Render voting analytics and insights."""
     st.markdown("### 📊 Voting Analytics & Insights")
     st.markdown("Explore community voting patterns and discover trending financial services!")
