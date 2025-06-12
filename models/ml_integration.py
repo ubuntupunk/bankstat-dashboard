@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from ml.transaction_categorizer import TransactionCategorizer
+from models.transaction_categorizer import TransactionCategorizer
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
