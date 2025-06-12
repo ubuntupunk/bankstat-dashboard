@@ -17,6 +17,7 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) # This ID will now directly correspond to Supabase Auth user ID
+    username = Column(String, unique=True, nullable=True, index=True) # Added username field
     email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False) # Keeping password for now as per previous decision
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -34,6 +35,7 @@ class User(Base):
     service_votes = relationship('ServiceVote', back_populates='user', cascade='all, delete-orphan')
     appliances = relationship('Appliance', back_populates='user', cascade='all, delete-orphan')
     energy_consumption = relationship('EnergyConsumption', back_populates='user', cascade='all, delete-orphan')
+    profile = relationship('Profile', back_populates='user', uselist=False, cascade='all, delete-orphan') # New relationship for profile
 
 
 class Role(Base):

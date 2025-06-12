@@ -26,14 +26,17 @@ max_function_length = 50
 -- Encourage modular code with separate files for utilities, models, and data handling
 modular_code = true
 file_structure = [
-    "app.py",               # Main Streamlit app entry point
+    "streamlit_app.py",               # Main Streamlit app entry point
     "utils/*.py",           # Utility functions (data processing, helpers)
     "components/*.py",      # Streamlit components and widgets
-    "models/*.py",          # Machine learning models or data logic
+    "db/*.py",              # Database connection and queries
+    "docs/*.md",            # Documentation
     "data/*.py"             # Data loading and preprocessing
+    "models/*.py",          # Machine learning models or data logic
+    "static/*.py",          # Static files (CSS, JS, images)
     "tabs/*.py"             # Streamlit tabs
-    "docs/*.md"             # Documentation
     "pages/*.py"            # Streamlit pages
+    "utils/*.py             # Utilities
 ]
 
 [rules.streamlit]
@@ -73,6 +76,26 @@ test_directory = "tests"
 logging = "enabled"
 logging_level = "INFO"
 logging_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+[rules.database]
+-- Use MongoDB for csv & json database
+use_mongodb = true
+-- Use PyMongo for database connection
+use_pymongo = true
+-- Use PyMongo for database queries
+use_pymongo_queries = true
+-- Use Supabase for user authentication
+use_supabase = true
+-- Use Supabase for database connection
+use_supabase_connection = true
+-- Use Supabase for database queries
+use_supabase_queries = true
+-- Use Supabase for user authentication
+use_supabase_auth = true
+-- Use SQLAlchemy for database connection
+use_sqlalchemy = true
+-- Use SQLAlchemy for database queries
+use_sqlalchemy_queries = true
 
 [rules.dependencies]
 -- Require a requirements.txt file for reproducibility

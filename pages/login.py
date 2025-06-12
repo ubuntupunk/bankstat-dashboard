@@ -61,8 +61,9 @@ else:
             try:
                 user_data, error = conn.auth.sign_in_with_password({"email": email, "password": password})
                 if error:
-                    st.error(f"Login failed: {error.message}")
-                    logger.error(f"Supabase login error: {error.message}")
+                    error_message = error.message if hasattr(error, 'message') else str(error)
+                    st.error(f"Login failed: {error_message}")
+                    logger.error(f"Supabase login error: {error_message}")
                 elif user_data and user_data.user:
                     st.session_state.authenticated = True
                     st.session_state.user = {
@@ -81,6 +82,7 @@ else:
 
     st.subheader("Create an Account")
     with st.form("signup_form"):
+        signup_username = st.text_input("Username", key="signup_username")
         signup_email = st.text_input("Email", key="signup_email")
         signup_password = st.text_input("Password", type="password", key="signup_password")
         signup_button = st.form_submit_button("Sign Up")
@@ -89,16 +91,20 @@ else:
             try:
                 user_data, error = conn.auth.sign_up({"email": signup_email, "password": signup_password})
                 if error:
-                    st.error(f"Sign up failed: {error.message}")
-                    logger.error(f"Supabase signup error: {error.message}")
+                    error_message = ""
+                    if hasattr(error, 'message'):
+                        error_message = error.message
+                    elif isinstance(error, tuple) and len(error) > 1:
+                        error_message = f"Supabase Auth Error: {error[0]} - {error[1]}" if error[1] else f"Supabase Auth Error: {error[0]}"
+                    else:
+                        error_message = str(error)
+                    
+                    st.error(f"Sign up failed: {error_message}")
+                    logger.error(f"Supabase signup error: {error_message}")
                 elif user_data and user_data.user:
-                    st.success("Account created! Please check your email to confirm your account.")
-                    # Optionally, log in the user immediately if auto-login after signup is desired
-                    # st.session_state.authenticated = True
-                    # st.session_state.user = {'email': user_data.user.email, 'user_id': user_data.user.id}
-                    # st.switch_page("pages/dashboard.py")
+                    st.success("Account created! Please check your email to confirm your account. You will be able to log in after confirmation.")
                 else:
-                    st.error("Sign up failed: Unknown error.")
+                    st.error("Sign up failed: Unknown error or no user data returned.")
             except Exception as e:
                 st.error(f"An unexpected error occurred during sign up: {str(e)}")
                 logger.error(f"Unexpected signup error: {str(e)}")
@@ -115,8 +121,9 @@ else:
                 # Supabase sends a password reset email
                 data, error = conn.auth.reset_password_for_email(forgot_email)
                 if error:
-                    st.error(f"Password reset failed: {error.message}")
-                    logger.error(f"Supabase password reset error: {error.message}")
+                    error_message = error.message if hasattr(error, 'message') else str(error)
+                    st.error(f"Password reset failed: {error_message}")
+                    logger.error(f"Supabase password reset error: {error_message}")
                 else:
                     st.success("If an account with that email exists, a password reset link has been sent.")
             except Exception as e:
