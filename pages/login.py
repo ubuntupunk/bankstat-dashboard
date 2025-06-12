@@ -2,6 +2,9 @@ import streamlit as st
 import logging
 from st_supabase_connection import SupabaseConnection # New import
 from urllib.parse import urlparse, parse_qs, urlencode
+from config import Config
+
+config = Config()
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -22,7 +25,12 @@ except FileNotFoundError:
     st.warning("styles.css not found. Some styling may be missing.")
 
 # Initialize Supabase connection
-conn = st.connection("supabase", type=SupabaseConnection) # Initialize Supabase connection
+conn = st.connection(
+    "supabase",
+    type=SupabaseConnection,
+    url=config.supabase_project_url, # Pass project URL from config
+    key=config.supabase_client_key # Pass client key from config
+)
 
 # Check if user is already authenticated via Supabase session
 # Supabase client stores session in local storage, so we can check it directly
