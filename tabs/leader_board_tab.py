@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import os
 import random
+import streamlit.components.v1 as components
 
 def leader_board_tab():
     """
@@ -431,7 +432,7 @@ def render_financial_services_voting():
             rank_color = "#6b7280"
         
         # Service card
-        st.markdown(f"""
+        service_card_html = f"""
         <div class="goal-card" style="border-left-color: {rank_color};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 1rem;">
@@ -464,7 +465,8 @@ def render_financial_services_voting():
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(service_card_html, height=250)
         
         # Voting buttons
         col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
@@ -607,7 +609,7 @@ def render_community_goals():
             trend_text = "Growing"
             border_color = "#3b82f6"
         
-        st.markdown(f"""
+        goal_card_html = f"""
         <div class="goal-card" style="border-left-color: {border_color};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div>
@@ -650,7 +652,8 @@ def render_community_goals():
                 Created by: <strong>{goal['created_by']}</strong>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(goal_card_html, height=400)
         
         # Action buttons
         col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
@@ -705,7 +708,7 @@ def render_top_contributors():
         # Second place
         with col1:
             contrib = contributors[1]
-            st.markdown(f"""
+            contributor_card_html_2nd = f"""
             <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #c0c0c0, #e8e8e8); border-radius: 1rem; margin-bottom: 1rem;">
                 <div style="font-size: 3rem;">{contrib['avatar']}</div>
                 <div style="font-size: 2rem;">🥈</div>
@@ -713,12 +716,13 @@ def render_top_contributors():
                 <div style="font-weight: bold; color: #6b7280;">{contrib['points']:,} points</div>
                 <div style="color: #6b7280; font-size: 0.875rem;">{contrib['badge']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            components.html(contributor_card_html_2nd, height=200)
         
         # First place (winner)
         with col2:
             contrib = contributors[0]
-            st.markdown(f"""
+            contributor_card_html_1st = f"""
             <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #ffd700, #ffed4e); border-radius: 1rem; margin-bottom: 1rem; transform: scale(1.05);">
                 <div style="font-size: 3rem;">{contrib['avatar']}</div>
                 <div style="font-size: 2rem;">🥇</div>
@@ -726,12 +730,13 @@ def render_top_contributors():
                 <div style="font-weight: bold; color: #1f2937;">{contrib['points']:,} points</div>
                 <div style="color: #1f2937; font-size: 0.875rem; font-weight: bold;">{contrib['badge']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            components.html(contributor_card_html_1st, height=200)
         
         # Third place
         with col3:
             contrib = contributors[2]
-            st.markdown(f"""
+            contributor_card_html_3rd = f"""
             <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #cd7f32, #daa520); border-radius: 1rem; margin-bottom: 1rem;">
                 <div style="font-size: 3rem;">{contrib['avatar']}</div>
                 <div style="font-size: 2rem;">🥉</div>
@@ -739,7 +744,8 @@ def render_top_contributors():
                 <div style="font-weight: bold; color: #1f2937;">{contrib['points']:,} points</div>
                 <div style="color: #1f2937; font-size: 0.875rem;">{contrib['badge']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            components.html(contributor_card_html_3rd, height=200)
     
     st.markdown("---")
     
@@ -747,7 +753,7 @@ def render_top_contributors():
     for i, contributor in enumerate(contributors):
         rank_color = "#ffd700" if i == 0 else "#c0c0c0" if i == 1 else "#cd7f32" if i == 2 else "#6b7280"
         
-        st.markdown(f"""
+        contributor_detail_card_html = f"""
         <div class="goal-card" style="border-left-color: {rank_color};">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <div style="text-align: center; min-width: 60px;">
@@ -788,7 +794,8 @@ def render_top_contributors():
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(contributor_detail_card_html, height=250)
         
         # Follow/Message buttons
         col1, col2, col3 = st.columns([1, 1, 3])
@@ -815,39 +822,43 @@ def render_voting_analytics():
     
     with col1:
         total_votes = sum(s['upvotes'] + s['downvotes'] + s['recommends'] for s in services)
-        st.markdown(f"""
+        metrics_card_html_total_votes = f"""
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{total_votes:,}</div>
             <div style="color: #6b7280;">Total Votes Cast</div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(metrics_card_html_total_votes, height=100)
     
     with col2:
         total_participants = sum(g['participants'] for g in goals)
-        st.markdown(f"""
+        metrics_card_html_total_participants = f"""
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #10b981;">{total_participants:,}</div>
             <div style="color: #6b7280;">Goal Participants</div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(metrics_card_html_total_participants, height=100)
     
     with col3:
         avg_completion = sum(g['completion_rate'] for g in goals) / len(goals) if goals else 0
-        st.markdown(f"""
+        metrics_card_html_avg_completion = f"""
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #f59e0b;">{avg_completion:.1f}%</div>
             <div style="color: #6b7280;">Avg Success Rate</div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(metrics_card_html_avg_completion, height=100)
     
     with col4:
         active_services = len([s for s in services if s['upvotes'] + s['recommends'] > s['downvotes']])
-        st.markdown(f"""
+        metrics_card_html_active_services = f"""
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #ef4444;">{active_services}</div>
             <div style="color: #6b7280;">Top Rated Services</div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(metrics_card_html_active_services, height=100)
     
     st.markdown("---")
     
@@ -932,7 +943,7 @@ def render_voting_analytics():
         total_votes = total_positive + stats['total_downvotes']
         approval_rate = (total_positive / total_votes * 100) if total_votes > 0 else 0
         
-        st.markdown(f"""
+        category_item_html = f"""
         <div class="activity-item">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
@@ -950,7 +961,8 @@ def render_voting_analytics():
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(category_item_html, height=120)
     
     # Recent activity feed
     st.markdown("---")
@@ -970,7 +982,7 @@ def render_voting_analytics():
         icon = "🗳️" if activity["type"] == "vote" else "🎯"
         color = "#3b82f6" if activity["type"] == "vote" else "#10b981"
         
-        st.markdown(f"""
+        activity_item_html = f"""
         <div class="activity-item">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <span style="font-size: 1.5rem;">{icon}</span>
@@ -984,7 +996,8 @@ def render_voting_analytics():
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        components.html(activity_item_html, height=80)
 
 if __name__ == "__main__":
     # This allows the script to be run directly for testing
