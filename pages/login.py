@@ -1,6 +1,6 @@
 import streamlit as st
 import logging
-from propelauth_utils import auth
+from utils.propelauth_utils import auth
 from urllib.parse import urlparse, parse_qs, urlencode
 
 # Configure logging

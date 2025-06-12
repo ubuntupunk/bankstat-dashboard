@@ -6,7 +6,7 @@ from processing import StreamlitAnalytics
 from db.connection import DatabaseConnection
 from financial_analyzer import FinancialAnalyzer
 from utils.pdf_processor import StreamlitBankProcessor
-from utils import debug_write
+from utils.utils import debug_write
 from tabs.upload_tab import render_upload_tab
 from tabs.dashboard_tab import render_dashboard_tab
 from tabs.settings_tab import render_settings_tab
