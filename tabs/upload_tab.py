@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime
-from utils import debug_write
+from utils.utils import debug_write
 import pandas as pd
 
 def render_upload_tab(pdf_processor, processor, db_connection):

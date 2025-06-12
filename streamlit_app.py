@@ -1,8 +1,8 @@
 import streamlit as st
 import logging
 from config import Config
-from propelauth_utils import auth
-from utils import DEBUG_MODE, debug_write
+from utils.propelauth_utils import auth
+from utils.utils import DEBUG_MODE, debug_write
 from components.footer import display_footer
 
 # Configure logging

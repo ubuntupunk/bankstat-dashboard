@@ -1,5 +1,5 @@
 import streamlit as st
-from propelauth_utils import auth
+from utils.propelauth_utils import auth
 
 # Import CSS
 with open("styles.css") as f:

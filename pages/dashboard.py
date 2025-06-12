@@ -1,11 +1,11 @@
 import streamlit as st
 from datetime import datetime, timedelta
-from propelauth_utils import auth
+from utils.propelauth_utils import auth
 from dashboard_viz import create_dashboard_metrics, create_expense_breakdown_chart, create_cash_flow_chart
 from processing import StreamlitAnalytics
 from connection import DatabaseConnection
 from financial_analyzer import FinancialAnalyzer
-from pdf_processor import StreamlitBankProcessor
+from utils.pdf_processor import StreamlitBankProcessor
 from utils import debug_write
 from tabs.upload_tab import render_upload_tab
 from tabs.dashboard_tab import render_dashboard_tab

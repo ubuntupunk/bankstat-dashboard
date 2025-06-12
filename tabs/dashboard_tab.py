@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from dashboard_viz import create_dashboard_metrics, create_expense_breakdown_chart, create_cash_flow_chart
-from utils import debug_write
+from utils.utils import debug_write
 from tabs.services_tab import render_services_tab
 from tabs.goals_tab import render_goals_tab
 from tabs.tools_tab import render_tools_tab
