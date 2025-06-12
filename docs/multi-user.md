@@ -1,17 +1,17 @@
 # Multi-User Authentication and Database Proposal
 
-This document outlines the plan for transitioning the BankStat Dashboard to a multi-user model, incorporating PropelAuth for authentication, Supabase (PostgreSQL) for core user data, and MongoDB for user-specific file storage (CSV and vectors).
+This document outlines the plan for transitioning the BankStat Dashboard to a multi-user model, incorporating Supabase Auth for authentication, Supabase (PostgreSQL) for core user data, and MongoDB for user-specific file storage (CSV and vectors).
 
-## 1. Token-based State Management with PropelAuth
+## 1. User Authentication and State Management with Supabase Auth
 
 ### Current Understanding
-PropelAuth handles user authentication and provides tokens (e.g., JWTs) upon successful login. Streamlit applications are inherently stateless, so maintaining user sessions across reruns is crucial. `st.session_state` is the recommended way to manage state in Streamlit.
+Supabase Auth handles user authentication, providing secure user management, sign-up, sign-in, and session management. Streamlit applications are inherently stateless, so maintaining user sessions across reruns is crucial. `st.session_state` is the recommended way to manage state in Streamlit.
 
 ### Proposed Approach
-*   **Authentication Flow:** Ensure the PropelAuth callback correctly receives and processes the authentication tokens.
-*   **Token Storage:** Store the PropelAuth user information (e.g., user ID, email, display name) and potentially the access token (if needed for API calls to PropelAuth or other services) in `st.session_state`. This will allow the application to identify the current user across different pages and reruns.
-*   **Session Management:** Implement checks at the beginning of protected pages/tabs to verify if the necessary user information exists in `st.session_state`. If not, redirect the user to the login page.
-*   **PropelAuth SDK Integration:** Leverage the PropelAuth Python SDK (if available and already in use, which `propelauth_utils.py` suggests) to handle token validation and user information retrieval securely.
+*   **Authentication Flow:** Integrate Supabase Auth for user registration, login, and session management. This will involve using Supabase client-side libraries (e.g., JavaScript for web, or Python SDK if available for direct backend interaction) to handle authentication requests.
+*   **Token Storage & Session Management:** Upon successful authentication with Supabase Auth, the user's session information (including their unique Supabase `user_id` which is a UUID) will be securely managed. This `user_id` will be stored in `st.session_state` to identify the current user across different pages and reruns.
+*   **Protected Pages:** Implement checks at the beginning of protected pages/tabs to verify if the necessary Supabase user session and `user_id` exist in `st.session_state`. If not, redirect the user to the login page.
+*   **Supabase Client Integration:** Leverage the Supabase Python client to interact with Supabase Auth services and retrieve user information securely.
 
 ## 2. Multi-User Database Handling: Supabase (PostgreSQL) and MongoDB
 
@@ -24,9 +24,9 @@ The application currently uploads processed PDF/CSV data to MongoDB. For a multi
 
 *   **Purpose:** Supabase PostgreSQL will be the primary database for managing core user interactions, personal goals, financial incentives, and budgeting information. This includes data that requires relational integrity and complex querying.
 *   **Integration:** SQLAlchemy will be used as the ORM to interact with the Supabase PostgreSQL database, as configured in `db/db.py`.
-*   **User Identification:** The `user_id` obtained from PropelAuth will be used as a foreign key in relevant Supabase tables to link data to specific users.
+*   **User Identification:** The `user_id` obtained from Supabase Auth (which is a UUID) will be used as the primary key in the `users` table and as a foreign key in relevant Supabase tables to link data to specific users.
 *   **Schema Design:** Tables will be designed to store:
-    *   User profiles (linked to PropelAuth `user_id`)
+    *   User profiles (linked to Supabase Auth `user_id`)
     *   Financial goals (e.g., savings targets, debt repayment plans)
     *   Budget categories and allocations
     *   Transaction summaries and categorizations (derived from processed CSV/PDF data, but stored relationally for analysis)
@@ -48,7 +48,7 @@ class AIChatMessage(Base):
     __tablename__ = "ai_chat_messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     role = Column(String, nullable=False) # "user" or "assistant"
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
@@ -65,7 +65,7 @@ class UserFinancialMetric(Base):
     __tablename__ = "user_financial_metrics"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     metric_name = Column(String, nullable=False) # e.g., "total_income", "total_expenses", "net_flow", "savings_rate"
     value = Column(Float, nullable=False)
     date = Column(DateTime(timezone=True), server_default=func.now()) # Date for which the metric applies
@@ -83,7 +83,7 @@ class UserGoal(Base):
     __tablename__ = "user_goals"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     goal_name = Column(String, nullable=False)
     target_amount = Column(Float, nullable=False)
     current_amount = Column(Float, default=0.0)
@@ -97,7 +97,7 @@ class GoalProgress(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     goal_id = Column(Integer, ForeignKey("user_goals.id"), nullable=False)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     date = Column(DateTime(timezone=True), server_default=func.now())
     progress_amount = Column(Float, nullable=False) # Amount contributed or current value
     goal = relationship("UserGoal")
@@ -115,7 +115,7 @@ class UserFinancialInsight(Base):
     __tablename__ = "user_financial_insights"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     insight_type = Column(String, nullable=False) # e.g., "category_insights", "monthly_trends", "budget_recommendations"
     insight_data = Column(JSONB, nullable=False) # Store the insight content as JSON
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -132,7 +132,7 @@ class BudgetCategory(Base):
     __tablename__ = "budget_categories"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     name = Column(String, nullable=False) # e.g., "Groceries", "Utilities", "Rent"
     allocated_amount = Column(Float, nullable=False) # Amount budgeted for this category
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -161,7 +161,7 @@ class UserReward(Base):
     __tablename__ = "user_rewards"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     incentive_id = Column(Integer, ForeignKey("incentives.id"), nullable=False)
     earned_at = Column(DateTime(timezone=True), server_default=func.now())
     reward_amount = Column(Float, nullable=False) # Actual amount earned for this instance
@@ -188,7 +188,7 @@ class ServiceVote(Base):
     __tablename__ = "service_votes"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     service_id = Column(Integer, ForeignKey("financial_services.id"), nullable=False)
     vote_type = Column(String, nullable=False) # e.g., "upvote", "downvote", "recommend"
     voted_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -207,7 +207,7 @@ class Appliance(Base):
     __tablename__ = "appliances"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     name = Column(String, nullable=False) # e.g., "Refrigerator", "Washing Machine"
     appliance_type = Column(String, nullable=True) # e.g., "Kitchen", "Laundry"
     power_rating_watts = Column(Float, nullable=True) # Power consumption in Watts
@@ -218,7 +218,7 @@ class EnergyConsumption(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     appliance_id = Column(Integer, ForeignKey("appliances.id"), nullable=False)
-    user_id = Column(String, index=True, nullable=False) # PropelAuth user ID (redundant but good for direct queries)
+    user_id = Column(String, index=True, nullable=False) # Supabase Auth user ID (UUID string)
     consumption_kwh = Column(Float, nullable=False) # Energy consumed in kWh for a period
     consumption_date = Column(DateTime(timezone=True), nullable=False) # Date of consumption reading
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -228,14 +228,14 @@ class EnergyConsumption(Base):
 #### 2.2 MongoDB for User-Specific File Storage
 
 *   **Purpose:** MongoDB will be used *solely* for the storage of raw user CSV files and vectors generated from processed PDFs. This leverages MongoDB's flexibility for unstructured and semi-structured document storage, which is ideal for large binary data or JSON representations of vectors.
-*   **User Identification:** When a user logs in via PropelAuth, obtain their unique `user_id`. This `user_id` will be included in MongoDB documents to associate data with the specific user.
+*   **User Identification:** When a user logs in via Supabase Auth, obtain their unique `user_id`. This `user_id` will be included in MongoDB documents to associate data with the specific user.
 *   **Database Schema Modification:**
-    *   **Data Collections (e.g., `user_files`, `processed_vectors`):** Modify existing or create new collections for user-uploaded files and their derived vectors. Each document in these collections *must* include a `user_id` field, referencing the `propelauth_user_id`.
+    *   **Data Collections (e.g., `user_files`, `processed_vectors`):** Modify existing or create new collections for user-uploaded files and their derived vectors. Each document in these collections *must* include a `user_id` field, referencing the Supabase Auth `user_id`.
         *   Example Schema for `user_files` (for raw CSVs):
             ```json
             {
                 "_id": ObjectId("..."),
-                "user_id": "propelauth_user_id_from_session",
+                "user_id": "supabase_auth_user_id",
                 "original_filename": "my_transactions.csv",
                 "upload_date": ISODate("..."),
                 "file_content": "base64_encoded_csv_data_or_gridfs_ref", // Raw CSV content
@@ -247,7 +247,7 @@ class EnergyConsumption(Base):
             ```json
             {
                 "_id": ObjectId("..."),
-                "user_id": "propelauth_user_id_from_session",
+                "user_id": "supabase_auth_user_id",
                 "source_file_id": ObjectId("..."), // Reference to original user_file
                 "data_type": "vector_json",
                 "content": { ... }, // The actual vector JSON data
@@ -267,9 +267,9 @@ class EnergyConsumption(Base):
 ```mermaid
 graph TD
     A[User Accesses App] --> B{Is User Authenticated?};
-    B -- No --> C[Redirect to PropelAuth Login];
-    C --> D[PropelAuth Authenticates User];
-    D --> E[PropelAuth Redirects to Callback with Tokens];
+    B -- No --> C[Redirect to Supabase Auth Login];
+    C --> D[Supabase Auth Authenticates User];
+    D --> E[Supabase Auth Redirects to Callback with Tokens];
     E --> F[App Processes Tokens & Stores User Info in st.session_state];
     F --> G[User Accesses Protected Pages/Features];
     G -- User Uploads CSV/PDF --> H[Processing Logic (e.g., pdf_processor.py)];
