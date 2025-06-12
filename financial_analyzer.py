@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple, Optional
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from connection import DatabaseConnection
+from db.connection import DatabaseConnection
 from config import Config
 from financial_insights import FinancialInsights
 
