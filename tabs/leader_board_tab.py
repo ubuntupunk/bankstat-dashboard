@@ -321,7 +321,7 @@ def render_financial_services_voting(css_content):
     
     # Add new service option
     with st.expander("➕ Suggest a New Financial Service"):
-        with st.form("add_service_form_unique"):
+        with st.form("add_service_form_financial_services"):
             new_name = st.text_input("Service Name")
             new_description = st.text_area("Description")
             new_category = st.selectbox("Category", ["Banking", "Insurance", "Investment", "Other"])
@@ -493,7 +493,7 @@ def render_community_goals(css_content):
     
     # Add goal creation option
     with st.expander("🎯 Create Your Own Goal"):
-        with st.form("create_goal_form_unique"):
+        with st.form("create_goal_form_community_goals"):
             col1, col2 = st.columns(2)
             with col1:
                 goal_name = st.text_input("Goal Name")
