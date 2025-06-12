@@ -24,18 +24,19 @@ class Config:
             self.supabase_direct_url = supabase.get("supabase_direct_url")
             
             # Derive Supabase project URL from the PostgreSQL URL
+            # The project reference is typically in the username part of the URL
             if self.supabase_url:
                 parsed_url = urlparse(self.supabase_url)
-                # Extract project ref from hostname (e.g., postgres.rflcvvnrdulzzyqiiltl.pooler.supabase.com)
-                host_parts = parsed_url.hostname.split('.')
-                if len(host_parts) >= 2 and 'supabase' in host_parts:
-                    # Find the index of 'supabase' and construct the URL
-                    supabase_idx = host_parts.index('supabase')
-                    project_ref = host_parts[supabase_idx - 1] if supabase_idx > 0 else None
-                    if project_ref:
-                        self.supabase_project_url = f"https://{project_ref}.supabase.co"
-                    else:
-                        self.supabase_project_url = None
+                project_ref = None
+                if parsed_url.username and '.' in parsed_url.username:
+                    # Example username: 'postgres.rflcvvnrdulzzyqiiltl'
+                    # We need 'rflcvvnrdulzzyqiiltl'
+                    username_parts = parsed_url.username.split('.')
+                    if len(username_parts) > 1:
+                        project_ref = username_parts[1]
+                
+                if project_ref:
+                    self.supabase_project_url = f"https://{project_ref}.supabase.co"
                 else:
                     self.supabase_project_url = None
             else:
@@ -66,14 +67,14 @@ class Config:
             # Derive Supabase project URL from the PostgreSQL URL
             if self.supabase_url:
                 parsed_url = urlparse(self.supabase_url)
-                host_parts = parsed_url.hostname.split('.')
-                if len(host_parts) >= 2 and 'supabase' in host_parts:
-                    supabase_idx = host_parts.index('supabase')
-                    project_ref = host_parts[supabase_idx - 1] if supabase_idx > 0 else None
-                    if project_ref:
-                        self.supabase_project_url = f"https://{project_ref}.supabase.co"
-                    else:
-                        self.supabase_project_url = None
+                project_ref = None
+                if parsed_url.username and '.' in parsed_url.username:
+                    username_parts = parsed_url.username.split('.')
+                    if len(username_parts) > 1:
+                        project_ref = username_parts[1]
+                
+                if project_ref:
+                    self.supabase_project_url = f"https://{project_ref}.supabase.co"
                 else:
                     self.supabase_project_url = None
             else:

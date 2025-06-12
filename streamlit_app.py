@@ -29,7 +29,14 @@ except FileNotFoundError:
 
 # Initialize configuration
 config = Config()
-missing_secrets = config.validate_config()
+
+# Validate configuration and handle missing secrets
+try:
+    config.validate_config()
+    secrets_ok = True
+except ValueError as e:
+    st.error(f"⚠️ Configuration Error: {e}")
+    secrets_ok = False
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
@@ -61,8 +68,8 @@ if DEBUG_MODE:
 else:
     st.caption("Debug mode is OFF.")
 
-if missing_secrets:
-    st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
+if not secrets_ok:
+    st.stop() # Stop the app if secrets are missing
 else:
     # Sidebar navigation (only show when authenticated)
     if st.session_state.authenticated:
