@@ -12,59 +12,20 @@ def leader_board_tab():
     Enhanced leaderboard with voting for financial services and community goals.
     """
     # Load CSS
-    css_path = os.path.join(os.path.dirname(__file__), "goals.css")
-    try:
+    css_path = os.path.join(os.path.dirname(__file__), "leader_board.css")
+    css_content = ""
+    if os.path.exists(css_path):
         with open(css_path, "r") as f:
-            css = f.read()
-        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        # Fallback CSS if external file not found
-        st.markdown("""
-        <style>
-        .goals-container {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-        .goal-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #3b82f6;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-        .goal-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-        .metrics-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #10b981;
-        }
-        .activity-item {
-            background: #f8fafc;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            border-left: 3px solid #3b82f6;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+            css_content = f.read()
+    else:
+        st.warning("leader_board.css not found. Cards may not render correctly.")
     
     # Initialize session state data
     initialize_leaderboard_data()
     
     # Header
-    st.markdown("""
+    st.markdown(f"""
+        <style>{css_content}</style>
         <div class="goals-container">
             <h1 style="margin: 0; font-size: 2rem; font-weight: bold;">🏅 Community Leaderboard</h1>
             <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Vote for the best financial services and discover trending community goals</p>
@@ -358,7 +319,7 @@ def render_financial_services_voting():
     
     # Add new service option
     with st.expander("➕ Suggest a New Financial Service"):
-        with st.form("add_service_form"):
+        with st.form("add_service_form_unique"):
             new_name = st.text_input("Service Name")
             new_description = st.text_area("Description")
             new_category = st.selectbox("Category", ["Banking", "Insurance", "Investment", "Other"])
@@ -433,6 +394,7 @@ def render_financial_services_voting():
         
         # Service card
         service_card_html = f"""
+        <style>{css_content}</style>
         <div class="goal-card" style="border-left-color: {rank_color};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 1rem;">
@@ -529,7 +491,7 @@ def render_community_goals():
     
     # Add goal creation option
     with st.expander("🎯 Create Your Own Goal"):
-        with st.form("create_goal_form"):
+        with st.form("create_goal_form_unique"):
             col1, col2 = st.columns(2)
             with col1:
                 goal_name = st.text_input("Goal Name")
@@ -610,6 +572,7 @@ def render_community_goals():
             border_color = "#3b82f6"
         
         goal_card_html = f"""
+        <style>{css_content}</style>
         <div class="goal-card" style="border-left-color: {border_color};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div>
@@ -723,6 +686,7 @@ def render_top_contributors():
         with col2:
             contrib = contributors[0]
             contributor_card_html_1st = f"""
+            <style>{css_content}</style>
             <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #ffd700, #ffed4e); border-radius: 1rem; margin-bottom: 1rem; transform: scale(1.05);">
                 <div style="font-size: 3rem;">{contrib['avatar']}</div>
                 <div style="font-size: 2rem;">🥇</div>
@@ -737,6 +701,7 @@ def render_top_contributors():
         with col3:
             contrib = contributors[2]
             contributor_card_html_3rd = f"""
+            <style>{css_content}</style>
             <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #cd7f32, #daa520); border-radius: 1rem; margin-bottom: 1rem;">
                 <div style="font-size: 3rem;">{contrib['avatar']}</div>
                 <div style="font-size: 2rem;">🥉</div>
@@ -754,6 +719,7 @@ def render_top_contributors():
         rank_color = "#ffd700" if i == 0 else "#c0c0c0" if i == 1 else "#cd7f32" if i == 2 else "#6b7280"
         
         contributor_detail_card_html = f"""
+        <style>{css_content}</style>
         <div class="goal-card" style="border-left-color: {rank_color};">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <div style="text-align: center; min-width: 60px;">
@@ -823,6 +789,7 @@ def render_voting_analytics():
     with col1:
         total_votes = sum(s['upvotes'] + s['downvotes'] + s['recommends'] for s in services)
         metrics_card_html_total_votes = f"""
+        <style>{css_content}</style>
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{total_votes:,}</div>
             <div style="color: #6b7280;">Total Votes Cast</div>
@@ -833,6 +800,7 @@ def render_voting_analytics():
     with col2:
         total_participants = sum(g['participants'] for g in goals)
         metrics_card_html_total_participants = f"""
+        <style>{css_content}</style>
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #10b981;">{total_participants:,}</div>
             <div style="color: #6b7280;">Goal Participants</div>
@@ -843,6 +811,7 @@ def render_voting_analytics():
     with col3:
         avg_completion = sum(g['completion_rate'] for g in goals) / len(goals) if goals else 0
         metrics_card_html_avg_completion = f"""
+        <style>{css_content}</style>
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #f59e0b;">{avg_completion:.1f}%</div>
             <div style="color: #6b7280;">Avg Success Rate</div>
@@ -853,6 +822,7 @@ def render_voting_analytics():
     with col4:
         active_services = len([s for s in services if s['upvotes'] + s['recommends'] > s['downvotes']])
         metrics_card_html_active_services = f"""
+        <style>{css_content}</style>
         <div class="metrics-card">
             <div style="font-size: 2rem; font-weight: bold; color: #ef4444;">{active_services}</div>
             <div style="color: #6b7280;">Top Rated Services</div>
@@ -944,6 +914,7 @@ def render_voting_analytics():
         approval_rate = (total_positive / total_votes * 100) if total_votes > 0 else 0
         
         category_item_html = f"""
+        <style>{css_content}</style>
         <div class="activity-item">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
@@ -983,6 +954,7 @@ def render_voting_analytics():
         color = "#3b82f6" if activity["type"] == "vote" else "#10b981"
         
         activity_item_html = f"""
+        <style>{css_content}</style>
         <div class="activity-item">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <span style="font-size: 1.5rem;">{icon}</span>
