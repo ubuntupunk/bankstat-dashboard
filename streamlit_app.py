@@ -1,7 +1,6 @@
 import streamlit as st
 import logging
 from config import Config
-from utils.propelauth_utils import auth
 from utils.utils import DEBUG_MODE, debug_write
 from components.footer import display_footer
 
@@ -50,23 +49,11 @@ pages = {
 
 # Authentication check
 def check_auth():
-    """Check if user is authenticated"""
-    if not st.session_state.authenticated or not st.session_state.user:
-        if current_page != "home":
-            st.query_params["page"] = "home"
-            st.rerun()
+    """Check if user is authenticated. If not, redirect to login page."""
+    if not st.session_state.get('authenticated') or not st.session_state.get('user'):
+        st.switch_page("pages/login.py")
         return False
     return True
-
-# Handle logout
-if query_params.get("logout"):
-    if st.session_state.authenticated and st.session_state.user:
-        auth.log_out(st.session_state.user.get('user_id'))
-    st.session_state.authenticated = False
-    st.session_state.user = None
-    st.query_params["page"] = "home"
-    st.query_params.pop("logout", None)
-    st.rerun()
 
 # Main app logic
 if DEBUG_MODE:
@@ -87,8 +74,7 @@ else:
                     st.rerun()
             
             if st.button("Logout"):
-                st.query_params["logout"] = "true"
-                st.rerun()
+                st.switch_page("pages/logout.py") # Direct switch to logout page
     
     # Page routing
     if current_page == "home":
@@ -140,12 +126,10 @@ else:
             st.switch_page("pages/dashboard.py")
     
     elif current_page == "dashboard":
-        if check_auth():
-            st.switch_page("pages/dashboard.py")
+        check_auth() # Just call check_auth, it handles redirection if needed
     
     else:
         st.warning("Page not found")
-        st.query_params["page"] = "home"
-        st.rerun()
+        st.switch_page("pages/home.py") # Redirect to home page
 
 display_footer()
