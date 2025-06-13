@@ -2,6 +2,25 @@
 - [x] Handle 'StreamlitBankProcessor' object has no attribute 'process_latest_json' error. (Completed)
 - [x] Handle cases where no bank statement JSON objects exist in the database. (Completed)
 - [x] Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='service_filter'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='up_3'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='service_filter'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='up_3'.
+- [x] in our leaderboard tab: There are multiple plotly_chart elements with the same auto-generated ID.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='service_filter'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='up_3'.
+- [x] in our leaderboard tab: There are multiple plotly_chart elements with the same auto-generated ID.
+- [x] Please place the appropriate emoji alongside tab entry in our st.tabs array in dashboard_tab.py
+- [x] Please add appropriate emojis to the tabs array in tools_tab.py
+- [x] Our leader_board_tab.py is more than the maximum 500 lines, we need to break it up into four or five manageble units inside the leader dir.
+- [x] Our dashboard tab imports all its tabs except for tab1. We should move tab1 into an import file to assist overall management.
+- [x] Our goals_tab.py needs to be broken up into manageble units.
 - [ ] Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
 - [ ] on streamlit-cloud branch After password reset, failed to return to login page https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=mEPKtc2ENywcKAa4hBCLbhsvBYgzkp&nonce=wHrj4PeKNNnrYGp6i456&code_challenge=5bYtaMRjzgBswOtVt0MK32Q0bogpid58HmAkKcAM5tM&code_challenge_method=S256
 

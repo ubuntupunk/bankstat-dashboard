@@ -12,3 +12,5 @@ streamlit-mermaid
 propelauth_py
 Authlib
 uuid
+scikit-learn
+tensorflow-cpu

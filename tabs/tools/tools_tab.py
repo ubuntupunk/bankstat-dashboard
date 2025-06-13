@@ -23,12 +23,17 @@ def render_tools_tab():
         st.markdown("""
         <div class="tools-container">
             <h1 style="margin: 0; font-size: 2rem; font-weight: bold;">🧮 Tools Dashboard</h1>
-            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Track your progress, manage your budget, and earn rewards</p>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Your tools to plan, budget, and earn rewards</p>
         </div>
     """, unsafe_allow_html=True)
 
      # Create tabs for different sections
-    tab1, tab2, tab3, tab4 = st.tabs(["Financial Flow Calculator", "Bond Calculator", "Investment Calculator", "Energy Calculator"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "💰 Financial Flow Calculator", 
+        "🏠 Bond Calculator", 
+        "📈 Investment Calculator", 
+        "⚡ Energy Calculator"
+    ])
     
     with tab1:
         render_financial_flow_calculator()
