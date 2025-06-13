@@ -43,100 +43,109 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'user' not in st.session_state:
     st.session_state.user = None
+if 'auth_mode' not in st.session_state:
+    st.session_state.auth_mode = 'login'
 
-# Get current page from query params
-query_params = st.query_params
-current_page = query_params.get("page", ["home"])[0]
-
-# Navigation
-pages = {
-    "home": "Home",
-    "dashboard": "Dashboard"
-}
-
-# Authentication check
-def check_auth():
-    """Check if user is authenticated. If not, redirect to login page."""
+def check_authentication():
+    """Check if user is authenticated, redirect to auth if not"""
     if not st.session_state.get('authenticated') or not st.session_state.get('user'):
+        # Redirect to authentication page
         st.switch_page("pages/login.py")
         return False
     return True
 
-# Main app logic
-if DEBUG_MODE:
-    st.info("Debug mode is ON.")
-else:
-    st.caption("Debug mode is OFF.")
-
-if not secrets_ok:
-    st.stop() # Stop the app if secrets are missing
-else:
-    # Sidebar navigation (only show when authenticated)
-    if st.session_state.authenticated:
-        with st.sidebar:
-            st.title("Navigation")
-            for page_id, page_name in pages.items():
-                if st.button(page_name, key=f"nav_{page_id}"):
-                    st.query_params["page"] = page_id
-                    st.rerun()
-            
-            if st.button("Logout"):
-                st.switch_page("pages/logout.py") # Direct switch to logout page
-    
-    # Page routing
-    if current_page == "home":
-        if not st.session_state.authenticated:
-            st.image("static/bankstatgreen.png", width=350, use_container_width=False)
-            st.title("Welcome to Bankstat")
-            st.markdown(
-                """
-                <style>
-                    .stApp {
-                        background-color: #f0f2f6; /* Light grey background */
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100vh;
-                    }
-                    .stApp > header {
-                        display: none; /* Hide Streamlit header */
-                    }
-                    .stApp > footer {
-                        display: none; /* Hide Streamlit footer */
-                    }
-                    .stButton > button {
-                        background-color: #2E8B57;
-                        color: white;
-                        padding: 0.75rem 2rem;
-                        border-radius: 0.5rem;
-                        border: none;
-                        font-size: 1.2rem;
-                        cursor: pointer;
-                        transition: background-color 0.3s ease;
-                    }
-                    .stButton > button:hover {
-                        background-color: #3CB371; /* Lighter green on hover */
-                    }
-                    h1 {
-                        color: #2E8B57;
-                        font-size: 2.5rem;
-                        margin-bottom: 1rem;
-                    }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-            if st.button("Login"):
-                st.switch_page("pages/login.py")
-        else:
+def render_authenticated_layout():
+    """Render the layout for authenticated users"""
+    # Sidebar navigation
+    with st.sidebar:
+        st.title("Bankstat")
+        st.markdown("---")
+        
+        # User info
+        if st.session_state.user:
+            st.write(f"👤 {st.session_state.user.get('email', 'User')}")
+        
+        st.markdown("---")
+        
+        # Navigation buttons
+        if st.button("🏠 Dashboard", use_container_width=True):
             st.switch_page("pages/dashboard.py")
-    
-    elif current_page == "dashboard":
-        check_auth() # Just call check_auth, it handles redirection if needed
-    
-    else:
-        st.warning("Page not found")
-        st.switch_page("pages/home.py") # Redirect to home page
+        
+        if st.button("📊 Analytics", use_container_width=True):
+            # st.switch_page("pages/analytics.py")  # When you create this page
+            st.info("Analytics page coming soon!")
+        
+        if st.button("⚙️ Settings", use_container_width=True):
+            # st.switch_page("pages/settings.py")  # When you create this page
+            st.info("Settings page coming soon!")
+        
+        st.markdown("---")
+        
+        # Logout button
+        if st.button("🚪 Logout", use_container_width=True):
+            st.switch_page("pages/logout.py")
 
-display_footer()
+def render_welcome_page():
+    """Render welcome page for unauthenticated users"""
+    # Center the content
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.image("static/bankstatgreen.png", width=350)
+        st.title("Welcome to Bankstat")
+        
+        st.markdown("""
+        ### Your Personal Banking Analytics Platform
+        
+        Bankstat helps you understand your financial patterns, track spending, 
+        and make informed decisions about your money.
+        
+        **Features:**
+        - 📊 Interactive spending analytics
+        - 💳 Transaction categorization
+        - 📈 Financial trend analysis
+        - 🎯 Budget tracking
+        - 📱 Mobile-friendly interface
+        """)
+        
+        st.markdown("---")
+        
+        # Auth buttons
+        col_login, col_register = st.columns(2)
+        
+        with col_login:
+            if st.button("Sign In", use_container_width=True, type="primary"):
+                st.session_state.auth_mode = 'login'
+                st.switch_page("pages/login.py")
+        
+        with col_register:
+            if st.button("Create Account", use_container_width=True):
+                st.session_state.auth_mode = 'register'
+                st.switch_page("pages/login.py")
+
+# Main app logic
+def main():
+    if DEBUG_MODE:
+        st.sidebar.info("Debug mode is ON.")
+    
+    if not secrets_ok:
+        st.error("⚠️ Configuration issues detected. Please check your environment variables.")
+        st.stop()
+    
+    # Check authentication status
+    if st.session_state.authenticated and st.session_state.user:
+        # User is authenticated - show main app
+        render_authenticated_layout()
+        
+        # Default to dashboard if no specific page requested
+        st.switch_page("pages/dashboard.py")
+        
+    else:
+        # User is not authenticated - show welcome page
+        render_welcome_page()
+
+if __name__ == "__main__":
+    main()
+    
+    # Always show footer
+    display_footer()
