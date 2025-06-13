@@ -119,13 +119,30 @@ else:
         if forgot_password_button:
             try:
                 # Supabase sends a password reset email
-                data, error = conn.auth.reset_password_for_email(forgot_email)
-                if error:
-                    error_message = error.message if hasattr(error, 'message') else str(error)
-                    st.error(f"Password reset failed: {error_message}")
-                    logger.error(f"Supabase password reset error: {error_message}")
+                # Supabase sends a password reset email
+                # The reset_password_for_email method is expected to return a tuple (data, error).
+                # The error is None if successful, otherwise it's an ApiError object.
+                # Handle cases where it might return None directly.
+                result = conn.auth.reset_password_for_email(forgot_email)
+                
+                if result is None:
+                    # If result is None, it implies an unexpected non-tuple return.
+                    # Treat this as a generic failure for password reset.
+                    st.error("Password reset failed: Unexpected response from Supabase. Please try again.")
+                    logger.error(f"Supabase password reset error: reset_password_for_email returned None for email: {forgot_email}")
+                elif isinstance(result, tuple) and len(result) == 2:
+                    data, error = result
+                    if error:
+                        error_message = error.message if hasattr(error, 'message') else str(error)
+                        st.error(f"Password reset failed: {error_message}")
+                        logger.error(f"Supabase password reset error: {error_message}")
+                    else:
+                        # Supabase's reset_password_for_email returns (None, None) on success
+                        st.success("If an account with that email exists, a password reset link has been sent.")
                 else:
-                    st.success("If an account with that email exists, a password reset link has been sent.")
+                    # Handle other unexpected return types
+                    st.error("Password reset failed: Invalid response format from Supabase. Please try again.")
+                    logger.error(f"Supabase password reset error: Unexpected return type {type(result)}: {result}")
             except Exception as e:
                 st.error(f"An unexpected error occurred during password reset: {str(e)}")
                 logger.error(f"Unexpected password reset error: {str(e)}")
