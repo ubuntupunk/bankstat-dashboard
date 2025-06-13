@@ -443,7 +443,7 @@ def render_financial_services_voting(css_content):
         with col1:
             button_style = "✅ Upvoted" if user_vote == 'upvote' else "👍 Upvote"
             disabled = user_vote == 'upvote'
-            if st.button(button_style, key=f"up_{service['id']}", disabled=disabled):
+            if st.button(button_style, key=f"up_{service['id']}_{time.time()}", disabled=disabled):
                 if user_vote == 'downvote':
                     service['downvotes'] -= 1
                 elif user_vote == 'recommend':
@@ -458,7 +458,7 @@ def render_financial_services_voting(css_content):
         with col2:
             button_style = "✅ Downvoted" if user_vote == 'downvote' else "👎 Downvote"
             disabled = user_vote == 'downvote'
-            if st.button(button_style, key=f"down_{service['id']}", disabled=disabled):
+            if st.button(button_style, key=f"down_{service['id']}_{time.time()}", disabled=disabled):
                 if user_vote == 'upvote':
                     service['upvotes'] -= 1
                 elif user_vote == 'recommend':
@@ -473,7 +473,7 @@ def render_financial_services_voting(css_content):
         with col3:
             button_style = "✅ Recommended" if user_vote == 'recommend' else "⭐ Recommend"
             disabled = user_vote == 'recommend'
-            if st.button(button_style, key=f"rec_{service['id']}", disabled=disabled):
+            if st.button(button_style, key=f"rec_{service['id']}_{time.time()}", disabled=disabled):
                 if user_vote == 'upvote':
                     service['upvotes'] -= 1
                 elif user_vote == 'downvote':
@@ -499,15 +499,15 @@ def render_community_goals(css_content):
         with st.form(key=f"create_goal_form_community_goals_{time.time()}"):
             col1, col2 = st.columns(2)
             with col1:
-                goal_name = st.text_input("Goal Name", key=f"goal_name_input_{time.time()}")
-                goal_category = st.selectbox("Category", ["Safety", "Asset", "Debt Reduction", "Investment", "Other"], key=f"goal_category_select_{time.time()}")
-                target_amount = st.number_input("Target Amount (R)", min_value=0, value=10000, key=f"target_amount_input_{time.time()}")
+                goal_name = st.text_input("Goal Name")
+                goal_category = st.selectbox("Category", ["Safety", "Asset", "Debt Reduction", "Investment", "Other"])
+                target_amount = st.number_input("Target Amount (R)", min_value=0, value=10000)
             
             with col2:
-                goal_description = st.text_area("Description", key=f"goal_description_area_{time.time()}")
-                tips_input = st.text_area("Tips (one per line)", key=f"tips_input_area_{time.time()}")
+                goal_description = st.text_area("Description")
+                tips_input = st.text_area("Tips (one per line)")
             
-            if st.form_submit_button("Create Goal", key=f"create_goal_submit_{time.time()}"):
+            if st.form_submit_button("Create Goal"):
                 if goal_name and goal_description:
                     tips_list = [tip.strip() for tip in tips_input.split('\n') if tip.strip()]
                     new_goal = {
@@ -628,7 +628,7 @@ def render_community_goals(css_content):
         
         with col1:
             if not goal['user_participating']:
-                if st.button(f"🚀 Join Goal", key=f"join_{goal['id']}"):
+                if st.button(f"🚀 Join Goal", key=f"join_{goal['id']}_{time.time()}"):
                     goal['user_participating'] = True
                     goal['participants'] += 1
                     st.success(f"You've joined '{goal['name']}'!")
@@ -639,14 +639,14 @@ def render_community_goals(css_content):
         with col2:
             liked = goal['id'] in st.session_state.user_goal_likes
             button_text = "❤️ Liked" if liked else "❤️ Like"
-            if st.button(button_text, key=f"like_{goal['id']}", disabled=liked):
+            if st.button(button_text, key=f"like_{goal['id']}_{time.time()}", disabled=liked):
                 goal['likes'] += 1
                 st.session_state.user_goal_likes.add(goal['id'])
                 st.success("Goal liked!")
                 st.rerun()
         
         with col3:
-            if st.button(f"📤 Share", key=f"share_{goal['id']}"):
+            if st.button(f"📤 Share", key=f"share_{goal['id']}_{time.time()}"):
                 st.info("Share link copied to clipboard!")
         
         # Progress bar for community average
@@ -772,11 +772,11 @@ def render_top_contributors(css_content):
         col1, col2, col3 = st.columns([1, 1, 3])
         
         with col1:
-            if st.button(f"👤 Follow", key=f"follow_{contributor['username']}"):
+            if st.button(f"👤 Follow", key=f"follow_{contributor['username']}_{time.time()}"):
                 st.success(f"Now following {contributor['username']}!")
         
         with col2:
-            if st.button(f"💬 Message", key=f"message_{contributor['username']}"):
+            if st.button(f"💬 Message", key=f"message_{contributor['username']}_{time.time()}"):
                 st.info(f"Message feature coming soon!")
 
 def render_voting_analytics(css_content):
