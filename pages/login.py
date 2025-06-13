@@ -369,7 +369,19 @@ def main():
     
     # Handle callbacks first
     if check_auth_callback():
-        return
+        # If a callback was handled (e.g., password reset link),
+        # and it set auth_mode to 'reset_form', we should render that form immediately.
+        # No need to check existing session or redirect to dashboard yet.
+        if st.session_state.auth_mode == 'reset_form':
+            st.image("static/bankstatgreen.png", width=300)
+            st.title("Bankstat")
+            render_reset_password_form()
+            # Debug info (remove in production)
+            if st.checkbox("Show Debug Info"):
+                st.write("Auth Mode:", st.session_state.auth_mode)
+                st.write("Authenticated:", st.session_state.authenticated)
+                st.write("Query Params:", dict(st.query_params))
+            return
     
     # Check existing session
     if check_existing_session() and st.session_state.authenticated:
