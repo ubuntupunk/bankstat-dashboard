@@ -3,6 +3,7 @@
 - [x] Handle cases where no bank statement JSON objects exist in the database. (Completed)
 - [x] Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
 - [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
 - [ ] Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
 - [ ] on streamlit-cloud branch After password reset, failed to return to login page https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=mEPKtc2ENywcKAa4hBCLbhsvBYgzkp&nonce=wHrj4PeKNNnrYGp6i456&code_challenge=5bYtaMRjzgBswOtVt0MK32Q0bogpid58HmAkKcAM5tM&code_challenge_method=S256
 

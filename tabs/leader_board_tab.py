@@ -355,14 +355,14 @@ def render_financial_services_voting(css_content):
         category_filter = st.selectbox(
             "Filter by category:",
             ["All", "Banking", "Insurance", "Investment", "Other"],
-            key="service_filter"
+            key=f"service_filter_{time.time()}"
         )
     
     with col2:
         sort_option = st.selectbox(
             "Sort by:",
             ["Overall Score", "Most Upvotes", "Most Recommended", "Newest"],
-            key="service_sort"
+            key=f"service_sort_{time.time()}"
         )
     
     # Filter services
@@ -496,18 +496,18 @@ def render_community_goals(css_content):
     
     # Add goal creation option
     with st.expander("🎯 Create Your Own Goal"):
-        with st.form("create_goal_form_community_goals"):
+        with st.form(key=f"create_goal_form_community_goals_{time.time()}"):
             col1, col2 = st.columns(2)
             with col1:
-                goal_name = st.text_input("Goal Name")
-                goal_category = st.selectbox("Category", ["Safety", "Asset", "Debt Reduction", "Investment", "Other"])
-                target_amount = st.number_input("Target Amount (R)", min_value=0, value=10000)
+                goal_name = st.text_input("Goal Name", key=f"goal_name_input_{time.time()}")
+                goal_category = st.selectbox("Category", ["Safety", "Asset", "Debt Reduction", "Investment", "Other"], key=f"goal_category_select_{time.time()}")
+                target_amount = st.number_input("Target Amount (R)", min_value=0, value=10000, key=f"target_amount_input_{time.time()}")
             
             with col2:
-                goal_description = st.text_area("Description")
-                tips_input = st.text_area("Tips (one per line)")
+                goal_description = st.text_area("Description", key=f"goal_description_area_{time.time()}")
+                tips_input = st.text_area("Tips (one per line)", key=f"tips_input_area_{time.time()}")
             
-            if st.form_submit_button("Create Goal"):
+            if st.form_submit_button("Create Goal", key=f"create_goal_submit_{time.time()}"):
                 if goal_name and goal_description:
                     tips_list = [tip.strip() for tip in tips_input.split('\n') if tip.strip()]
                     new_goal = {
@@ -536,14 +536,14 @@ def render_community_goals(css_content):
         category_filter = st.selectbox(
             "Filter by category:",
             ["All", "Safety", "Asset", "Debt Reduction", "Investment", "Other"],
-            key="goal_category_filter"
+            key=f"goal_category_filter_{time.time()}"
         )
     
     with col2:
         goal_sort = st.selectbox(
             "Sort by:",
             ["Most Popular", "Highest Success Rate", "Most Liked", "Newest"],
-            key="goal_sort"
+            key=f"goal_sort_{time.time()}"
         )
     
     # Filter goals
