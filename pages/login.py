@@ -40,24 +40,57 @@ def check_auth_callback():
     """Handle authentication callbacks (OAuth, password reset, etc.)"""
     query_params = st.query_params
     
-    # Check for password reset callback
+    # Check for authentication callbacks (password reset, magic link, email confirmation)
     access_token = query_params.get("access_token")
     refresh_token = query_params.get("refresh_token")
-    
+    callback_type = query_params.get("type")
+
     if access_token and refresh_token:
-        # This is a password reset callback
-        st.session_state.auth_mode = 'reset_form'
-        st.session_state.reset_tokens = {
-            'access_token': access_token,
-            'refresh_token': refresh_token
-        }
-        # Clear URL params to prevent re-processing
-        # st.query_params.clear() # Do not clear here, let streamlit_app.py handle it
-        # st.rerun() # Do not rerun here, let streamlit_app.py handle the redirect
-        return True
+        if callback_type == "recovery":
+            # This is a password reset callback
+            st.session_state.auth_mode = 'reset_form'
+            st.session_state.reset_tokens = {
+                'access_token': access_token,
+                'refresh_token': refresh_token
+            }
+            st.query_params.clear() # Clear URL params after processing
+            st.rerun() # Rerun to apply session state and clear URL
+            return True
+        elif callback_type == "magiclink":
+            # This is a magic link login
+            try:
+                with st.spinner("Logging in with magic link..."):
+                    conn.auth.set_session(
+                        access_token=access_token,
+                        refresh_token=refresh_token
+                    )
+                    user_session = conn.auth.get_session()
+                    if user_session and user_session.user:
+                        st.session_state.authenticated = True
+                        st.session_state.user = {
+                            'email': user_session.user.email,
+                            'user_id': user_session.user.id
+                        }
+                        st.success("Logged in successfully via magic link!")
+                        st.query_params.clear() # Clear URL params after successful login
+                        st.switch_page("pages/dashboard.py") # Redirect to dashboard
+                        return True
+                    else:
+                        st.error("Magic link login failed. Please try again.")
+                        st.session_state.auth_mode = 'login'
+                        st.query_params.clear() # Clear URL params on failure
+                        st.rerun()
+                        return False
+            except Exception as e:
+                st.error(f"An error occurred during magic link login: {str(e)}")
+                logger.error(f"Magic link login error: {e}")
+                st.session_state.auth_mode = 'login'
+                st.query_params.clear() # Clear URL params on error
+                st.rerun()
+                return False
     
     # Check for email confirmation callback
-    if query_params.get("type") == "signup":
+    if callback_type == "signup":
         st.success("Email confirmed successfully! You can now log in.")
         st.session_state.auth_mode = 'login'
         st.query_params.clear()
@@ -182,16 +215,10 @@ def render_register_form():
             
             try:
                 with st.spinner("Creating account..."):
-                    result = conn.auth.sign_up({
+                    user_data, error = conn.auth.sign_up({
                         "email": email,
                         "password": password
                     })
-                    
-                    if isinstance(result, tuple):
-                        user_data, error = result
-                    else:
-                        user_data = result
-                        error = None
                     
                     if error:
                         error_msg = error.message if hasattr(error, 'message') else str(error)
@@ -406,6 +433,8 @@ def main():
     if st.checkbox("Show Debug Info"):
         st.write("Auth Mode:", st.session_state.auth_mode)
         st.write("Authenticated:", st.session_state.authenticated)
+        st.write("User:", st.session_state.user)
+        st.write("Reset Tokens:", st.session_state.get('reset_tokens'))
         st.write("Query Params:", dict(st.query_params))
 
 if __name__ == "__main__":
