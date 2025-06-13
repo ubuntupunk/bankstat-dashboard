@@ -10,6 +10,7 @@ from tabs.leader.leader_board_main import leader_board_tab
 from models.ml_integration import MLCategoryIntegration
 import plotly.express as px
 from tabs.key_metrics_tab import render_key_metrics_tab
+# from tabs.goals.metrics_alerts import render_metrics_alerts
 
 def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
     # Load CSS from dashboard.css
@@ -41,6 +42,8 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     with tab1:
         render_key_metrics_tab(analyzer, processor, db_connection, start_date, end_date)
+    # with tab1:
+    #     render_metrics_alerts
     with tab2:
         ml_integration = MLCategoryIntegration(analyzer)
         ml_integration.render_ml_tab(processor)

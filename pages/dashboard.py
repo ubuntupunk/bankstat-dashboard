@@ -12,7 +12,7 @@ from tabs.dashboard_tab import render_dashboard_tab
 from tabs.settings_tab import render_settings_tab
 from tabs.tools.tools_tab import render_tools_tab
 from tabs.goals.goals_tab import render_goals_tab
-from tabs.ai_expert_tab import render_ai_advisor_tab
+from tabs.expert.ai_expert_tab import render_ai_advisor_tab
 from components.footer import display_footer
 # CSS
 with open("styles.css") as f:
