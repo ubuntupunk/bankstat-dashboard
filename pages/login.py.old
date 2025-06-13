@@ -2,7 +2,6 @@ import streamlit as st
 import logging
 from st_supabase_connection import SupabaseConnection
 from config import Config
-from utils.utils import DEBUG_MODE, debug_write
 
 config = Config()
 logger = logging.getLogger(__name__)
@@ -39,9 +38,7 @@ if 'user' not in st.session_state:
 
 def check_auth_callback():
     """Handle authentication callbacks (OAuth, password reset, etc.)"""
-    debug_write("check_auth_callback called")
     query_params = st.query_params
-    debug_write(f"Query Params in callback: {dict(query_params)}")
     
     # Check for authentication callbacks (password reset, magic link, email confirmation)
     access_token = query_params.get("access_token")
@@ -49,7 +46,6 @@ def check_auth_callback():
     callback_type = query_params.get("type")
 
     if access_token and refresh_token:
-        debug_write(f"Access Token found. Type: {callback_type}")
         if callback_type == "recovery":
             # This is a password reset callback
             st.session_state.auth_mode = 'reset_form'
@@ -57,13 +53,11 @@ def check_auth_callback():
                 'access_token': access_token,
                 'refresh_token': refresh_token
             }
-            debug_write("Auth Mode set to 'reset_form'")
             st.query_params.clear() # Clear URL params after processing
             st.rerun() # Rerun to apply session state and clear URL
             return True
         elif callback_type == "magiclink":
             # This is a magic link login
-            debug_write("Attempting magic link login...")
             try:
                 with st.spinner("Logging in with magic link..."):
                     conn.auth.set_session(
@@ -78,13 +72,11 @@ def check_auth_callback():
                             'user_id': user_session.user.id
                         }
                         st.success("Logged in successfully via magic link!")
-                        debug_write("Magic link login successful. Redirecting to dashboard.")
                         st.query_params.clear() # Clear URL params after successful login
                         st.switch_page("pages/dashboard.py") # Redirect to dashboard
                         return True
                     else:
                         st.error("Magic link login failed. Please try again.")
-                        debug_write("Magic link login failed. Rerunning.")
                         st.session_state.auth_mode = 'login'
                         st.query_params.clear() # Clear URL params on failure
                         st.rerun()
@@ -92,7 +84,6 @@ def check_auth_callback():
             except Exception as e:
                 st.error(f"An error occurred during magic link login: {str(e)}")
                 logger.error(f"Magic link login error: {e}")
-                debug_write(f"Magic link login error: {e}. Rerunning.")
                 st.session_state.auth_mode = 'login'
                 st.query_params.clear() # Clear URL params on error
                 st.rerun()
@@ -100,14 +91,12 @@ def check_auth_callback():
     
     # Check for email confirmation callback
     if callback_type == "signup":
-        debug_write("Signup callback detected.")
         st.success("Email confirmed successfully! You can now log in.")
         st.session_state.auth_mode = 'login'
         st.query_params.clear()
         st.rerun()
         return True
     
-    debug_write("No auth callback handled.")
     return False
 
 def check_existing_session():
@@ -146,27 +135,33 @@ def render_login_form():
             
             try:
                 with st.spinner("Signing in..."):
-                    response = conn.auth.sign_in_with_password({
+                    result = conn.auth.sign_in_with_password({
                         "email": email,
                         "password": password
                     })
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        user_data, error = response
+                    if isinstance(result, tuple):
+                        user_data, error = result
                     else:
-                        user_data = response
+                        user_data = result
                         error = None
                     
                     if error:
-                        st.error(f"Sign in failed: {error.message if hasattr(error, 'message') else str(error)}")
-                    elif user_data and user_data.user:
+                        error_msg = error.message if hasattr(error, 'message') else str(error)
+                        if "invalid_credentials" in error_msg.lower():
+                            st.error("Invalid email or password")
+                        elif "email_not_confirmed" in error_msg.lower():
+                            st.error("Please confirm your email address before signing in")
+                        else:
+                            st.error(f"Sign in failed: {error_msg}")
+                    elif user_data and hasattr(user_data, 'user') and user_data.user:
                         st.session_state.authenticated = True
                         st.session_state.user = {
                             'email': user_data.user.email,
                             'user_id': user_data.user.id
                         }
                         st.success("Signed in successfully!")
-                        st.switch_page("pages/dashboard.py")
+                        st.rerun()
                     else:
                         st.error("Sign in failed. Please try again.")
                         
@@ -220,28 +215,27 @@ def render_register_form():
             
             try:
                 with st.spinner("Creating account..."):
-                    response = conn.auth.sign_up({
+                    user_data, error = conn.auth.sign_up({
                         "email": email,
                         "password": password
                     })
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        user_data, error = response
-                    else:
-                        user_data = response
-                        error = None
-                    
                     if error:
-                        st.error(f"Registration failed: {error.message if hasattr(error, 'message') else str(error)}")
-                    elif user_data and user_data.user:
+                        error_msg = error.message if hasattr(error, 'message') else str(error)
+                        if "already_registered" in error_msg.lower():
+                            st.error("An account with this email already exists")
+                        else:
+                            st.error(f"Registration failed: {error_msg}")
+                    elif user_data and hasattr(user_data, 'user') and user_data.user:
                         if user_data.user.email_confirmed_at:
+                            # Auto-login if email is already confirmed
                             st.session_state.authenticated = True
                             st.session_state.user = {
                                 'email': user_data.user.email,
                                 'user_id': user_data.user.id
                             }
                             st.success("Account created and signed in successfully!")
-                            st.switch_page("pages/dashboard.py")
+                            st.rerun()
                         else:
                             st.success("Account created! Please check your email and click the confirmation link before signing in.")
                             st.session_state.auth_mode = 'login'
@@ -286,18 +280,20 @@ def render_reset_request_form():
             
             try:
                 with st.spinner("Sending reset email..."):
-                    response = conn.auth.reset_password_for_email(email)
+                    result = conn.auth.reset_password_for_email(email)
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        _, error = response
-                        if error:
-                            st.error(f"Reset failed: {error.message if hasattr(error, 'message') else str(error)}")
-                        else:
-                            st.success("If an account with that email exists, a password reset link has been sent. Please check your email.")
-                            st.info("The reset link will redirect you back here to set your new password.")
-                    else:
+                    # Handle different return formats
+                    if result is None or (isinstance(result, tuple) and len(result) == 2 and result[1] is None):
                         st.success("If an account with that email exists, a password reset link has been sent. Please check your email.")
                         st.info("The reset link will redirect you back here to set your new password.")
+                    else:
+                        if isinstance(result, tuple) and len(result) == 2:
+                            _, error = result
+                            if error:
+                                error_msg = error.message if hasattr(error, 'message') else str(error)
+                                st.error(f"Reset failed: {error_msg}")
+                        else:
+                            st.error("Reset failed. Please try again.")
                             
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
@@ -342,23 +338,27 @@ def render_reset_password_form():
             
             try:
                 with st.spinner("Updating password..."):
+                    # Set session with reset tokens
                     tokens = st.session_state.reset_tokens
                     conn.auth.set_session(
                         access_token=tokens['access_token'],
                         refresh_token=tokens['refresh_token']
                     )
                     
-                    response = conn.auth.update_user({"password": new_password})
+                    # Update password
+                    result = conn.auth.update_user({"password": new_password})
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        user_data, error = response
+                    if isinstance(result, tuple):
+                        user_data, error = result
                     else:
-                        user_data = response
+                        user_data = result
                         error = None
                     
                     if error:
-                        st.error(f"Password update failed: {error.message if hasattr(error, 'message') else str(error)}")
-                    elif user_data and user_data.user:
+                        error_msg = error.message if hasattr(error, 'message') else str(error)
+                        st.error(f"Password update failed: {error_msg}")
+                    elif user_data and hasattr(user_data, 'user') and user_data.user:
+                        # Clean up reset tokens
                         del st.session_state.reset_tokens
                         
                         # Set authenticated state
@@ -367,8 +367,9 @@ def render_reset_password_form():
                             'email': user_data.user.email,
                             'user_id': user_data.user.id
                         }
+                        
                         st.success("Password updated successfully! You are now signed in.")
-                        st.switch_page("pages/dashboard.py")
+                        st.rerun()
                     else:
                         st.error("Password update failed. Please try again.")
                         
@@ -395,24 +396,19 @@ def main():
     
     # Handle callbacks first
     if check_auth_callback():
-        # If a callback was handled (e.g., password reset link or magic link),
-        # and it set auth_mode to 'reset_form' or redirected to dashboard,
-        # we should return immediately.
+        # If a callback was handled (e.g., password reset link),
+        # and it set auth_mode to 'reset_form', we should render that form immediately.
+        # No need to check existing session or redirect to dashboard yet.
         if st.session_state.auth_mode == 'reset_form':
             st.image("static/bankstatgreen.png", width=300)
             st.title("Bankstat")
             render_reset_password_form()
             # Debug info (remove in production)
-            if DEBUG_MODE:
+            if st.checkbox("Show Debug Info"):
                 st.write("Auth Mode:", st.session_state.auth_mode)
                 st.write("Authenticated:", st.session_state.authenticated)
-                st.write("User:", st.session_state.user)
-                st.write("Reset Tokens:", st.session_state.get('reset_tokens'))
                 st.write("Query Params:", dict(st.query_params))
             return
-        # If magic link successfully logged in and redirected, check_auth_callback would have returned True
-        # and switched page, so we don't need to do anything further here.
-        return # Important: return here if check_auth_callback handled something and reran/switched page.
     
     # Check existing session
     if check_existing_session() and st.session_state.authenticated:
@@ -434,7 +430,7 @@ def main():
         render_reset_password_form()
     
     # Debug info (remove in production)
-    if DEBUG_MODE:
+    if st.checkbox("Show Debug Info"):
         st.write("Auth Mode:", st.session_state.auth_mode)
         st.write("Authenticated:", st.session_state.authenticated)
         st.write("User:", st.session_state.user)

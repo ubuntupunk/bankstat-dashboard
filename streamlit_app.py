@@ -138,9 +138,14 @@ def main():
     refresh_token = query_params.get("refresh_token")
 
     if access_token and refresh_token:
-        # If reset tokens are present, redirect to login page to handle the reset form.
-        # The login page will be responsible for processing the tokens, setting session state,
-        # and clearing the URL parameters after successful processing.
+        # If reset tokens are present, redirect to login page to handle the reset form
+        st.session_state.auth_mode = 'reset_form'
+        st.session_state.reset_tokens = {
+            'access_token': access_token,
+            'refresh_token': refresh_token
+        }
+        # Clear URL params here to prevent re-processing on subsequent loads
+        st.query_params.clear() 
         st.switch_page("pages/login.py")
         return
     
