@@ -1,9 +1,13 @@
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
 import pandas as pd
 import os
+from datetime import datetime, timedelta
+from tabs.goals.goals_overview import render_goals_overview
+from tabs.goals.budget_management import render_budget_management
+from tabs.goals.metrics_alerts import render_metrics_alerts
+from tabs.goals.incentives_rewards import render_incentives
+import plotly.graph_objects as go
+import plotly.express as px
 
 def render_goals_tab():
     """Render the Goals tab with financial goals management."""

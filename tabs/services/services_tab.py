@@ -1,8 +1,8 @@
 import streamlit as st
-from tabs.insurance_tab import render_insurance_tab
-from tabs.banking_tab import render_banking_tab
-from tabs.gym_tab import render_gym_tab
-from tabs.legal_tab import render_legal_tab
+from tabs.services.insurance_tab import render_insurance_tab
+from tabs.services.banking_tab import render_banking_tab
+from tabs.services.gym_tab import render_gym_tab
+from tabs.services.legal_tab import render_legal_tab
 
 def render_services_tab():
     st.markdown("""
