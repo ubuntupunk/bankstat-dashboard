@@ -868,7 +868,7 @@ def render_voting_analytics(css_content):
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"service_voting_chart_{time.time()}")
     
     with col2:
         st.markdown("#### 🎯 Goal Participation Trends")
@@ -890,7 +890,7 @@ def render_voting_analytics(css_content):
                          color='Success Rate',
                          color_continuous_scale='viridis')
         fig2.update_layout(height=400)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, key=f"goal_participation_chart_{time.time()}")
     
     # Category breakdown
     st.markdown("#### 🏷️ Service Categories Performance")
