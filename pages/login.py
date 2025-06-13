@@ -51,100 +51,133 @@ st.title("Welcome to Bankstat")
 if st.session_state.get('authenticated'):
     st.switch_page("pages/dashboard.py")
 else:
-    st.subheader("Sign In")
-    with st.form("login_form"):
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
-        login_button = st.form_submit_button("Login")
+    # Check for access token in URL for password reset callback
+    query_params = st.query_params
+    access_token = query_params.get("access_token")
+    refresh_token = query_params.get("refresh_token")
+    token_type = query_params.get("token_type")
+    expires_in = query_params.get("expires_in")
+    expires_at = query_params.get("expires_at")
+    
+    if access_token and refresh_token:
+        try:
+            # Set the session from the URL parameters
+            conn.auth.set_session(
+                access_token=access_token,
+                refresh_token=refresh_token
+            )
+            user_session = conn.auth.get_session()
+            if user_session:
+                st.session_state.authenticated = True
+                st.session_state.user = {
+                    'email': user_session.user.email,
+                    'user_id': user_session.user.id
+                }
+                st.success("Password reset successful! You are now logged in.")
+                # Clear URL parameters to prevent re-processing on refresh
+                st.query_params.clear()
+                st.switch_page("pages/dashboard.py")
+            else:
+                st.error("Failed to set session from reset link. Please try again.")
+                logger.error("Supabase password reset callback: Failed to get user session after setting tokens.")
+        except Exception as e:
+            st.error(f"An unexpected error occurred during password reset callback: {str(e)}")
+            logger.error(f"Unexpected password reset callback error: {str(e)}")
+    else:
+        st.subheader("Sign In")
+        with st.form("login_form"):
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_password")
+            login_button = st.form_submit_button("Login")
 
-        if login_button:
-            try:
-                user_data, error = conn.auth.sign_in_with_password({"email": email, "password": password})
-                if error:
-                    error_message = error.message if hasattr(error, 'message') else str(error)
-                    st.error(f"Login failed: {error_message}")
-                    logger.error(f"Supabase login error: {error_message}")
-                elif user_data and user_data.user:
-                    st.session_state.authenticated = True
-                    st.session_state.user = {
-                        'email': user_data.user.email,
-                        'user_id': user_data.user.id
-                    }
-                    st.success("Logged in successfully!")
-                    st.switch_page("pages/dashboard.py")
-                else:
-                    st.error("Login failed: Unknown error.")
-            except Exception as e:
-                st.error(f"An unexpected error occurred during login: {str(e)}")
-                logger.error(f"Unexpected login error: {str(e)}")
-
-    st.markdown("---")
-
-    st.subheader("Create an Account")
-    with st.form("signup_form"):
-        signup_username = st.text_input("Username", key="signup_username")
-        signup_email = st.text_input("Email", key="signup_email")
-        signup_password = st.text_input("Password", type="password", key="signup_password")
-        signup_button = st.form_submit_button("Sign Up")
-
-        if signup_button:
-            try:
-                user_data, error = conn.auth.sign_up({"email": signup_email, "password": signup_password})
-                if error:
-                    error_message = ""
-                    if hasattr(error, 'message'):
-                        error_message = error.message
-                    elif isinstance(error, tuple) and len(error) > 1:
-                        error_message = f"Supabase Auth Error: {error[0]} - {error[1]}" if error[1] else f"Supabase Auth Error: {error[0]}"
-                    else:
-                        error_message = str(error)
-                    
-                    st.error(f"Sign up failed: {error_message}")
-                    logger.error(f"Supabase signup error: {error_message}")
-                elif user_data and user_data.user:
-                    st.success("Account created! Please check your email to confirm your account. You will be able to log in after confirmation.")
-                else:
-                    st.error("Sign up failed: Unknown error or no user data returned.")
-            except Exception as e:
-                st.error(f"An unexpected error occurred during sign up: {str(e)}")
-                logger.error(f"Unexpected signup error: {str(e)}")
-
-    st.markdown("---")
-
-    st.subheader("Forgot Password?")
-    with st.form("forgot_password_form"):
-        forgot_email = st.text_input("Enter your email", key="forgot_email")
-        forgot_password_button = st.form_submit_button("Reset Password")
-
-        if forgot_password_button:
-            try:
-                # Supabase sends a password reset email
-                # Supabase sends a password reset email
-                # The reset_password_for_email method is expected to return a tuple (data, error).
-                # The error is None if successful, otherwise it's an ApiError object.
-                # Handle cases where it might return None directly.
-                result = conn.auth.reset_password_for_email(forgot_email)
-                
-                if result is None:
-                    # If result is None, it implies an unexpected non-tuple return.
-                    # Treat this as a generic failure for password reset.
-                    st.error("Password reset failed: Unexpected response from Supabase. Please try again.")
-                    logger.error(f"Supabase password reset error: reset_password_for_email returned None for email: {forgot_email}")
-                elif isinstance(result, tuple) and len(result) == 2:
-                    data, error = result
+            if login_button:
+                try:
+                    user_data, error = conn.auth.sign_in_with_password({"email": email, "password": password})
                     if error:
                         error_message = error.message if hasattr(error, 'message') else str(error)
-                        st.error(f"Password reset failed: {error_message}")
-                        logger.error(f"Supabase password reset error: {error_message}")
+                        st.error(f"Login failed: {error_message}")
+                        logger.error(f"Supabase login error: {error_message}")
+                    elif user_data and user_data.user:
+                        st.session_state.authenticated = True
+                        st.session_state.user = {
+                            'email': user_data.user.email,
+                            'user_id': user_data.user.id
+                        }
+                        st.success("Logged in successfully!")
+                        st.switch_page("pages/dashboard.py")
                     else:
-                        # Supabase's reset_password_for_email returns (None, None) on success
-                        st.success("If an account with that email exists, a password reset link has been sent.")
-                else:
-                    # Handle other unexpected return types
-                    st.error("Password reset failed: Invalid response format from Supabase. Please try again.")
-                    logger.error(f"Supabase password reset error: Unexpected return type {type(result)}: {result}")
-            except Exception as e:
-                st.error(f"An unexpected error occurred during password reset: {str(e)}")
-                logger.error(f"Unexpected password reset error: {str(e)}")
+                        st.error("Login failed: Unknown error.")
+                except Exception as e:
+                    st.error(f"An unexpected error occurred during login: {str(e)}")
+                    logger.error(f"Unexpected login error: {str(e)}")
+
+        st.markdown("---")
+
+        st.subheader("Create an Account")
+        with st.form("signup_form"):
+            signup_username = st.text_input("Username", key="signup_username")
+            signup_email = st.text_input("Email", key="signup_email")
+            signup_password = st.text_input("Password", type="password", key="signup_password")
+            signup_button = st.form_submit_button("Sign Up")
+
+            if signup_button:
+                try:
+                    user_data, error = conn.auth.sign_up({"email": signup_email, "password": signup_password})
+                    if error:
+                        error_message = ""
+                        if hasattr(error, 'message'):
+                            error_message = error.message
+                        elif isinstance(error, tuple) and len(error) > 1:
+                            error_message = f"Supabase Auth Error: {error[0]} - {error[1]}" if error[1] else f"Supabase Auth Error: {error[0]}"
+                        else:
+                            error_message = str(error)
+                        
+                        st.error(f"Sign up failed: {error_message}")
+                        logger.error(f"Supabase signup error: {error_message}")
+                    elif user_data and user_data.user:
+                        st.success("Account created! Please check your email to confirm your account. You will be able to log in after confirmation.")
+                    else:
+                        st.error("Sign up failed: Unknown error or no user data returned.")
+                except Exception as e:
+                    st.error(f"An unexpected error occurred during sign up: {str(e)}")
+                    logger.error(f"Unexpected signup error: {str(e)}")
+
+        st.markdown("---")
+
+        st.subheader("Forgot Password?")
+        with st.form("forgot_password_form"):
+            forgot_email = st.text_input("Enter your email", key="forgot_email")
+            forgot_password_button = st.form_submit_button("Reset Password")
+
+            if forgot_password_button:
+                try:
+                    # Supabase sends a password reset email
+                    # Supabase sends a password reset email
+                    # The reset_password_for_email method is expected to return a tuple (data, error).
+                    # The error is None if successful, otherwise it's an ApiError object.
+                    # Handle cases where it might return None directly.
+                    result = conn.auth.reset_password_for_email(forgot_email)
+                    
+                    if result is None:
+                        # If result is None, it implies an unexpected non-tuple return.
+                        # Treat this as a generic failure for password reset.
+                        st.error("Password reset failed: Unexpected response from Supabase. Please try again.")
+                        logger.error(f"Supabase password reset error: reset_password_for_email returned None for email: {forgot_email}")
+                    elif isinstance(result, tuple) and len(result) == 2:
+                        data, error = result
+                        if error:
+                            error_message = error.message if hasattr(error, 'message') else str(error)
+                            st.error(f"Password reset failed: {error_message}")
+                            logger.error(f"Supabase password reset error: {error_message}")
+                        else:
+                            # Supabase's reset_password_for_email returns (None, None) on success
+                            st.success("If an account with that email exists, a password reset link has been sent.")
+                    else:
+                        # Handle other unexpected return types
+                        st.error("Password reset failed: Invalid response format from Supabase. Please try again.")
+                        logger.error(f"Supabase password reset error: Unexpected return type {type(result)}: {result}")
+                except Exception as e:
+                    st.error(f"An unexpected error occurred during password reset: {str(e)}")
+                    logger.error(f"Unexpected password reset error: {str(e)}")
 
     # The development login form is removed as Supabase Auth will handle all flows.
