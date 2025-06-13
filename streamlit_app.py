@@ -131,6 +131,16 @@ def main():
     if not secrets_ok:
         st.error("⚠️ Configuration issues detected. Please check your environment variables.")
         st.stop()
+
+    # Check for password reset callback tokens in URL
+    query_params = st.query_params
+    access_token = query_params.get("access_token")
+    refresh_token = query_params.get("refresh_token")
+
+    if access_token and refresh_token:
+        # If reset tokens are present, redirect to login page to handle the reset form
+        st.switch_page("pages/login.py")
+        return
     
     # Check authentication status
     if st.session_state.authenticated and st.session_state.user:
