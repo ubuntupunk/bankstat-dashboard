@@ -81,7 +81,7 @@ def render_goals_tab():
     """, unsafe_allow_html=True)
 
     # Create tabs for different sections
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Goals Overview", "💰 Budget Management", "📈 Metrics & Alerts", "🏆 Incentives & Rewards" ])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Goals Overview", "💰 Budget Management", "📈 Metrics & Alerts", "🏆 Incentives & Rewards" ])
     
     with tab1:
         render_goals_overview()

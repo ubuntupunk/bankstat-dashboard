@@ -6,7 +6,7 @@ from utils import debug_write
 from tabs.services_tab import render_services_tab
 from tabs.goals_tab import render_goals_tab
 from tabs.tools_tab import render_tools_tab
-from tabs.leader_board_tab import leader_board_tab
+from tabs.leader.leader_board_tab import leader_board_tab
 from models.ml_integration import MLCategoryIntegration
 import plotly.express as px
 

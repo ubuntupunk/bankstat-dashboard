@@ -28,7 +28,12 @@ def render_tools_tab():
     """, unsafe_allow_html=True)
 
      # Create tabs for different sections
-    tab1, tab2, tab3, tab4 = st.tabs(["Financial Flow Calculator", "Bond Calculator", "Investment Calculator", "Energy Calculator"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "💰 Financial Flow Calculator", 
+        "🏠 Bond Calculator", 
+        "📈 Investment Calculator", 
+        "⚡ Energy Calculator"
+    ])
     
     with tab1:
         render_financial_flow_calculator()
