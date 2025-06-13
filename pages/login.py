@@ -78,11 +78,20 @@ else:
                 st.query_params.clear()
                 st.switch_page("pages/dashboard.py")
             else:
-                st.error("Failed to set session from reset link. Please try again.")
+                st.toast("Failed to set session from reset link. Please try again.", icon="⚠️")
                 logger.error("Supabase password reset callback: Failed to get user session after setting tokens.")
         except Exception as e:
-            st.error(f"An unexpected error occurred during password reset callback: {str(e)}")
-            logger.error(f"Unexpected password reset callback error: {str(e)}")
+            # Check for specific error messages related to expired tokens
+            error_message = str(e)
+            if "invalid_grant" in error_message or "expired" in error_message:
+                st.toast("Password reset link has expired or is invalid. Please request a new one.", icon="🚨")
+                logger.warning(f"Supabase password reset callback: Expired or invalid token: {error_message}")
+            else:
+                st.toast(f"An unexpected error occurred during password reset callback: {error_message}", icon="🚨")
+                logger.error(f"Unexpected password reset callback error: {error_message}")
+            # Clear URL parameters even on error to prevent infinite loop
+            st.query_params.clear()
+            st.rerun() # Rerun to clear URL and display toast
     else:
         st.subheader("Sign In")
         with st.form("login_form"):
