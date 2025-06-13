@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import random
 import streamlit.components.v1 as components
+import time
 
 def leader_board_tab():
     """
@@ -321,7 +322,9 @@ def render_financial_services_voting(css_content):
     
     # Add new service option
     with st.expander("➕ Suggest a New Financial Service"):
-        with st.form("add_service_userfi_services"):
+        # Use a unique key for the form to prevent duplication issues on reruns.
+        # time.time() provides a highly granular unique identifier for each render.
+        with st.form(key=f"add_service_userfi_services_{time.time()}"):
             new_name = st.text_input("Service Name")
             new_description = st.text_area("Description")
             new_category = st.selectbox("Category", ["Banking", "Insurance", "Investment", "Other"])
