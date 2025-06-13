@@ -43,7 +43,6 @@ def check_auth_callback():
     # Check for password reset callback
     access_token = query_params.get("access_token")
     refresh_token = query_params.get("refresh_token")
-    token_type = query_params.get("token_type")
     
     if access_token and refresh_token:
         # This is a password reset callback
@@ -53,8 +52,8 @@ def check_auth_callback():
             'refresh_token': refresh_token
         }
         # Clear URL params to prevent re-processing
-        st.query_params.clear()
-        st.rerun()
+        # st.query_params.clear() # Do not clear here, let streamlit_app.py handle it
+        # st.rerun() # Do not rerun here, let streamlit_app.py handle the redirect
         return True
     
     # Check for email confirmation callback
