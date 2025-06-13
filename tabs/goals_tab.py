@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import pandas as pd
 import os
-from tabs.leader_board_tab import leader_board_tab
 
 def render_goals_tab():
     """Render the Goals tab with financial goals management."""
@@ -82,7 +81,7 @@ def render_goals_tab():
     """, unsafe_allow_html=True)
 
     # Create tabs for different sections
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Goals Overview", "💰 Budget Management", "📈 Metrics & Alerts", "🏆 Incentives & Rewards", "🏅 Leader Board"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Goals Overview", "💰 Budget Management", "📈 Metrics & Alerts", "🏆 Incentives & Rewards" ])
     
     with tab1:
         render_goals_overview()
@@ -95,9 +94,7 @@ def render_goals_tab():
     
     with tab4:
         render_incentives()
-
-    with tab5:
-        leader_board_tab()
+ 
 
 def render_goals_overview():
     """Render the goals overview with progress cards."""

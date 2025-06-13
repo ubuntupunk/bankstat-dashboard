@@ -29,7 +29,14 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     debug_write("Entered render_dashboard_tab")
     
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Key Metrics", "My Neural Net", "Goals", "Services", "Tools", "Leader Board"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📈 Key Metrics", 
+        "🧠 My Neural Net", 
+        "🎯 Goals", 
+        "🏦 Services", 
+        "🛠️ Tools", 
+        "🏅 Leader Board"
+    ])
 
     with tab1:
         # Check data availability
