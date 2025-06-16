@@ -213,8 +213,8 @@ class MLCategoryIntegration:
         
         # Get existing categories
         existing_categories = list(self.analyzer.category_mappings.keys()) if hasattr(self.analyzer, 'category_mappings') else [
-            'Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 
-            'Bills & Utilities', 'Income', 'Healthcare', 'Other'
+            'Food & Dining', 'Rent & Housing','Transportation', 'Shopping', 'Groceries', 'Hardware','Entertainment', 
+            'Bills & Utilities', 'Income', 'Insurance', 'Healthcare', 'Donation', 'Other'
         ]
         
         # Manual categorization form

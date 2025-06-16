@@ -290,3 +290,18 @@ def simple_forecast(self, df, n_months=6):
 ```
 
 This approach requires minimal data and computational resources while still providing reasonable forecasts based on historical patterns.
+
+## Key Recommendations for Your Deployment:
+
+### Immediate Fix: Change the minimum data requirement from 10 to 5 points and add weekly aggregation for small datasets
+Cloud-Optimized Model: Switch to a lighter model:
+
+Streamlit Cloud: Use Gradient Boosting with 30 estimators
+Vercel: Use Ridge regression with polynomial features
+Cloudflare: Use statistical forecasting methods
+
+
+Data Efficiency: Implement adaptive aggregation (daily → weekly → monthly) based on available data
+Memory Usage: Convert data types to smaller formats (int16, float32) and limit feature count
+
+The current Random Forest with 200 trees is overkill for cloud deployment and small datasets. A simpler model will be faster, use less memory, and often perform just as well with limited data.
