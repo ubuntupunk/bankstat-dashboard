@@ -13,203 +13,131 @@ import os
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from utils.utils import debug_write
 warnings.filterwarnings('ignore')
 
 class SpendingPredictor:
-    def __init__(self, analyzer, processor, db_connection):
+    def __init__(self, analyzer, db_connection):
         self.analyzer = analyzer
-        self.processor = processor
         self.db_connection = db_connection
         self.model = None
         self.scaler = None
         self.imputer = None
         self.features = []
         
-    def load_data(self, start_date, end_date, data_source="Auto"):
-        """Load transaction data using the same pattern as key_metrics_tab"""
-        transactions_df = pd.DataFrame()
-        data_info = {}
-        
-        # Determine data source availability
-        local_available = self.processor.get_statement_info() is not None
-        debug_write(f"Local data available: {local_available}")
-        
-        db_available = False
+    def load_data_from_mongodb(self, start_date=None, end_date=None):
+        """Load transaction data from MongoDB within a specified date range"""
         try:
-            doc_count = self.db_connection.count_documents()
-            db_available = doc_count > 0
-            debug_write(f"Database documents count: {doc_count}")
+            if self.db_connection:
+                collection = self.db_connection.get_collection()
+                if collection is not None:
+                    query = {}
+                    if start_date and end_date:
+                        # Ensure dates are in datetime format for MongoDB query
+                        query['date'] = {
+                            '$gte': datetime.combine(start_date, datetime.min.time()),
+                            '$lte': datetime.combine(end_date, datetime.max.time())
+                        }
+                    
+                    cursor = collection.find(query)
+                    data = list(cursor)
+                    
+                    if data:
+                        df = pd.DataFrame(data)
+                        return self._process_mongodb_data(df)
+            return None
         except Exception as e:
-            debug_write(f"ERROR: Database check failed: {str(e)}")
-        
-        # Auto-select data source if not specified
-        if data_source == "Auto":
-            if db_available:
-                data_source = "Database Query"
-            elif local_available:
-                data_source = "Local File"
-            else:
-                st.error("❌ No data available from any source")
-                return None, {}
-        
-        # Load from Database
-        if data_source == "Database Query" and db_available:
-            try:
-                st.info(f"🔍 Querying database for transactions between {start_date} and {end_date}")
-                with st.spinner("Loading data from database..."):
-                    query = {
-                        "$or": [
-                            {
-                                "period.start": {"$lte": end_date.strftime("%Y-%m-%d")},
-                                "period.end": {"$gte": start_date.strftime("%Y-%m-%d")}
-                            },
-                            {
-                                "period.start": {"$exists": False}
-                            }
-                        ]
-                    }
-                    documents = self.db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
-                    debug_write(f"Found {len(documents)} document(s) in database")
-                    
-                    if documents:
-                        for doc in documents:
-                            debug_write(f"Processing document with keys: {list(doc.keys())}")
-                            df = self.processor.process_latest_json()
-                            if not df.empty:
-                                # Standardize column names
-                                df = self._standardize_columns(df)
-                                
-                                # Filter by date
-                                if 'date' in df.columns:
-                                    df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                                    df = df[
-                                        (df['date'] >= pd.to_datetime(start_date)) &
-                                        (df['date'] <= pd.to_datetime(end_date))
-                                    ]
-                                
-                                if not df.empty:
-                                    transactions_df = pd.concat([transactions_df, df], ignore_index=True)
-                    
-                    if not transactions_df.empty:
-                        transactions_df = transactions_df.drop_duplicates().sort_values('date')
-                        data_info = {
-                            'source': 'Database',
-                            'documents_found': len(documents),
-                            'transactions_loaded': len(transactions_df),
-                            'date_range': f"{start_date} to {end_date}",
-                            'columns': transactions_df.columns.tolist()
-                        }
-                        debug_write(f"transactions_df shape: {transactions_df.shape}")
-                    else:
-                        st.warning(f"No transactions found in database for date range {start_date} to {end_date}")
-                        if local_available:
-                            data_source = "Local File"
-            except Exception as e:
-                st.error(f"Error querying database: {str(e)}")
-                if local_available:
-                    st.info("Falling back to local file...")
-                    data_source = "Local File"
-        
-        # Load from Local File
-        if (data_source == "Local File" and local_available) or (data_source == "Database Query" and transactions_df.empty and local_available):
-            try:
-                with st.spinner("Loading data from local file..."):
-                    transactions_df = self.processor.load_latest_bank_statement()
-                    statement_info = self.processor.get_statement_info()
-                    debug_write(f"Statement info: {statement_info}")
-                    
-                    if not transactions_df.empty and statement_info:
-                        # Standardize column names
-                        transactions_df = self._standardize_columns(transactions_df)
-                        
-                        # Check date range overlap
-                        period = statement_info.get('period', {})
-                        if period.get('start') and period.get('end'):
-                            file_start = pd.to_datetime(period['start'])
-                            file_end = pd.to_datetime(period['end'])
-                            selected_start = pd.to_datetime(start_date)
-                            selected_end = pd.to_datetime(end_date)
-                            
-                            if file_end < selected_start or file_start > selected_end:
-                                st.warning(f"⚠️ Local file covers {period['start']} to {period['end']}, but you selected {start_date} to {end_date}. There may be no overlapping data.")
-                            
-                            # Filter to selected date range
-                            if 'date' in transactions_df.columns:
-                                transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
-                                original_count = len(transactions_df)
-                                transactions_df = transactions_df[
-                                    (transactions_df['date'] >= selected_start) &
-                                    (transactions_df['date'] <= selected_end)
-                                ]
-                                filtered_count = len(transactions_df)
-                                
-                                if filtered_count == 0:
-                                    st.warning(f"No transactions found in local file for your selected date range ({start_date} to {end_date})")
-                                elif filtered_count < original_count:
-                                    st.info(f"Filtered to {filtered_count} transactions (from {original_count} total) matching your date range")
-                        
-                        data_info = {
-                            'source': 'Local File',
-                            'filename': statement_info.get('filename', 'Unknown'),
-                            'file_period': f"{period.get('start', 'Unknown')} to {period.get('end', 'Unknown')}",
-                            'transactions_loaded': len(transactions_df),
-                            'selected_range': f"{start_date} to {end_date}",
-                            'columns': transactions_df.columns.tolist()
-                        }
-                        debug_write(f"transactions_df shape: {transactions_df.shape}")
-                    
-            except Exception as e:
-                st.error(f"Error loading local file: {str(e)}")
-        
-        # Return processed data
-        if not transactions_df.empty:
-            # Convert to daily aggregated format for predictions
-            daily_df = self._aggregate_daily_data(transactions_df)
-            return daily_df, data_info
-        else:
-            return None, data_info
+            st.warning(f"MongoDB load failed: {str(e)}")
+            return None
     
-    def _standardize_columns(self, df):
-        """Standardize column names to match expected format"""
-        column_mapping = {
-            'Date': 'date',
-            'Transaction Date': 'date',
-            'Trans Date': 'date',
-            'Description': 'description',
-            'Details': 'description',
-            'Trans Details': 'description',
-            'Debit': 'debits',
-            'Debits': 'debits',
-            'Credit': 'credits',
-            'Credits': 'credits',
-            'Balance': 'balance',
-            'Running Balance': 'balance',
-            'Saldo': 'balance'
-        }
-        df = df.rename(columns=column_mapping)
+    def load_data_from_json(self):
+        """Fallback to load data from latest_bank_statement.json"""
+        try:
+            json_path = "latest_bank_statement.json"
+            if os.path.exists(json_path):
+                with open(json_path, 'r') as f:
+                    data = json.load(f)
+                df = pd.DataFrame(data)
+                return self._process_json_data(df)
+            return None
+        except Exception as e:
+            st.warning(f"JSON load failed: {str(e)}")
+            return None
+    
+    def _process_mongodb_data(self, df):
+        """Process MongoDB data into required format"""
+        if df.empty:
+            return None
+            
+        processed_data = []
         
-        # Ensure required columns exist
-        required_columns = ['date', 'description', 'debits', 'credits', 'balance']
-        for col in required_columns:
-            if col not in df.columns:
-                df[col] = 'Unknown' if col == 'description' else 0.0
+        for _, row in df.iterrows():
+            # Convert date, handling potential missing 'date' key
+            date_val = None
+            if 'date' in row and row['date'] is not None:
+                try:
+                    date_val = pd.to_datetime(row['date'], errors='coerce')
+                except Exception as e:
+                    st.warning(f"Error converting date '{row['date']}': {e}")
+                    continue # Skip this row if date conversion fails
+            else:
+                continue # Skip if 'date' key is missing or None
+                
+            if pd.isna(date_val):
+                continue # Skip if date is NaT after conversion
+                
+            # Get amounts - adjust field names based on your schema
+            debit = float(row.get('debits', 0) or 0)
+            credit = float(row.get('credits', 0) or 0)
+            
+            processed_data.append({
+                'date': date_val,
+                'debits': debit,
+                'credits': credit,
+                'net_spending': debit - credit,
+                'description': row.get('description', ''),
+                'category': row.get('category', 'Unknown')
+            })
         
-        return df
+        result_df = pd.DataFrame(processed_data)
+        result_df = result_df.dropna(subset=['date'])
+        result_df = result_df.sort_values('date')
+        
+        return self._aggregate_daily_data(result_df)
+    
+    def _process_json_data(self, df):
+        """Process JSON data into required format"""
+        if df.empty:
+            return None
+            
+        processed_data = []
+        for _, row in df.iterrows():
+            date_val = pd.to_datetime(row.get('date'), errors='coerce')
+            if pd.isna(date_val):
+                continue
+            
+            debit = float(row.get('debits', 0) or 0)
+            credit = float(row.get('credits', 0) or 0)
+            
+            processed_data.append({
+                'date': date_val,
+                'debits': debit,
+                'credits': credit,
+                'net_spending': debit - credit,
+                'description': row.get('description', ''),
+                'category': row.get('category', 'Unknown')
+            })
+        
+        result_df = pd.DataFrame(processed_data)
+        result_df = result_df.dropna(subset=['date'])
+        result_df = result_df.sort_values('date')
+        
+        return self._aggregate_daily_data(result_df)
     
     def _aggregate_daily_data(self, df):
         """Aggregate transaction data by day for prediction"""
         if df.empty:
             return None
-        
-        # Ensure numeric columns
-        df['debits'] = pd.to_numeric(df['debits'], errors='coerce').fillna(0)
-        df['credits'] = pd.to_numeric(df['credits'], errors='coerce').fillna(0)
-        
-        # Calculate net spending
-        df['net_spending'] = df['debits'] - df['credits']
-        
-        # Group by date
+            
         daily_agg = df.groupby(df['date'].dt.date).agg({
             'debits': 'sum',
             'credits': 'sum',
@@ -223,6 +151,23 @@ class SpendingPredictor:
         daily_agg['total_spending'] = daily_agg['debits']
         
         return daily_agg
+    
+    def load_data(self, start_date=None, end_date=None):
+        """Load data with MongoDB primary, JSON fallback"""
+        # Try MongoDB first
+        df = self.load_data_from_mongodb(start_date, end_date)
+        
+        if df is None or df.empty:
+            st.info("📱 Using fallback data source...")
+            df = self.load_data_from_json()
+        else:
+            st.success("📊 Loaded data from MongoDB")
+            
+        if df is None or df.empty:
+            st.error("❌ No data available from any source")
+            return None
+            
+        return df
     
     def engineer_features(self, df):
         """Extract temporal features and prepare data"""
@@ -395,36 +340,12 @@ def render_prediction_tab(analyzer, processor, db_connection, start_date, end_da
     """, unsafe_allow_html=True)
     
     # Initialize predictor
-    predictor = SpendingPredictor(analyzer, processor, db_connection)
-    
-    # Check data availability
-    local_available = processor.get_statement_info() is not None
-    db_available = False
-    try:
-        doc_count = db_connection.count_documents()
-        db_available = doc_count > 0
-    except Exception:
-        pass
+    predictor = SpendingPredictor(analyzer, db_connection)
     
     col1, col2 = st.columns([2, 1])
     
     with col2:
         st.markdown("### ⚙️ Prediction Settings")
-        
-        # Data source selection
-        data_source_options = []
-        if db_available:
-            data_source_options.append("Database Query")
-        if local_available:
-            data_source_options.append("Local File")
-        if not data_source_options:
-            data_source_options = ["No Data"]
-        
-        data_source = st.selectbox(
-            "Data Source:",
-            data_source_options,
-            help="Choose data source for predictions"
-        )
         
         n_months = st.slider(
             "Prediction Period (months)",
@@ -440,24 +361,13 @@ def render_prediction_tab(analyzer, processor, db_connection, start_date, end_da
         )
     
     with col1:
-        # Handle no data case
-        if data_source == "No Data":
-            st.error("❌ No data available for predictions. Please upload a bank statement in the 'Upload & Process' tab.")
-            return
-        
         # Load and process data
         with st.spinner("📊 Loading financial data..."):
-            df, data_info = predictor.load_data(start_date, end_date, data_source)
+            df = predictor.load_data(start_date, end_date)
         
         if df is None or df.empty:
-            st.error("❌ No data available for predictions in the selected date range")
+            st.error("❌ No data available for predictions")
             return
-        
-        # Display data info
-        if data_info:
-            with st.expander("📋 Data Source Information", expanded=False):
-                for key, value in data_info.items():
-                    st.write(f"**{key.replace('_', ' ').title()}:** {value}")
         
         # Show data info
         st.info(f"📈 Loaded {len(df)} days of transaction data from {df['date'].min().strftime('%Y-%m-%d')} to {df['date'].max().strftime('%Y-%m-%d')}")
