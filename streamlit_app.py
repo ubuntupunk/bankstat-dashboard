@@ -30,13 +30,13 @@ except FileNotFoundError:
 # Initialize configuration
 config = Config()
 
-# Validate configuration and handle missing secrets
-try:
-    config.validate_config()
-    secrets_ok = True
-except ValueError as e:
-    st.error(f"⚠️ Configuration Error: {e}")
-    secrets_ok = False
+# # Validate configuration and handle missing secrets
+# try:
+#     config.validate_config()
+#     secrets_ok = True
+# except ValueError as e:
+#     st.error(f"⚠️ Configuration Error: {e}")
+#     secrets_ok = False
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:

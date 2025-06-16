@@ -1,6 +1,6 @@
 import streamlit as st
+from supabase import create_client, Client
 import logging
-from st_supabase_connection import SupabaseConnection
 from config import Config
 from utils.utils import DEBUG_MODE, debug_write
 
@@ -21,13 +21,14 @@ try:
 except FileNotFoundError:
     st.warning("styles.css not found. Some styling may be missing.")
 
-# Initialize Supabase connection
-conn = st.connection(
-    "supabase",
-    type=SupabaseConnection,
-    url=config.supabase_project_url,
-    key=config.supabase_client_key
-)
+# Initialize Supabase client
+@st.cache_resource
+def init_supabase_client():
+    url = config.supabase_project_url
+    key = config.supabase_api_key
+    return create_client(url, key)
+
+supabase: Client = init_supabase_client()
 
 # Initialize session state
 if 'auth_mode' not in st.session_state:
@@ -66,11 +67,11 @@ def check_auth_callback():
             debug_write("Attempting magic link login...")
             try:
                 with st.spinner("Logging in with magic link..."):
-                    conn.auth.set_session(
+                    supabase.auth.set_session(
                         access_token=access_token,
                         refresh_token=refresh_token
                     )
-                    user_session = conn.auth.get_session()
+                    user_session = supabase.auth.get_session()
                     if user_session and user_session.user:
                         st.session_state.authenticated = True
                         st.session_state.user = {
@@ -113,7 +114,7 @@ def check_auth_callback():
 def check_existing_session():
     """Check if user already has a valid session"""
     try:
-        user_session = conn.auth.get_session()
+        user_session = supabase.auth.get_session()
         if user_session and user_session.user:
             st.session_state.authenticated = True
             st.session_state.user = {
@@ -146,27 +147,21 @@ def render_login_form():
             
             try:
                 with st.spinner("Signing in..."):
-                    response = conn.auth.sign_in_with_password({
+                    response = supabase.auth.sign_in_with_password({
                         "email": email,
                         "password": password
                     })
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        user_data, error = response
-                    else:
-                        user_data = response
-                        error = None
-                    
-                    if error:
-                        st.error(f"Sign in failed: {error.message if hasattr(error, 'message') else str(error)}")
-                    elif user_data and user_data.user:
+                    if response.user:
                         st.session_state.authenticated = True
                         st.session_state.user = {
-                            'email': user_data.user.email,
-                            'user_id': user_data.user.id
+                            'email': response.user.email,
+                            'user_id': response.user.id
                         }
                         st.success("Signed in successfully!")
                         st.switch_page("pages/dashboard.py")
+                    elif response.error:
+                        st.error(f"Sign in failed: {response.error.message}")
                     else:
                         st.error("Sign in failed. Please try again.")
                         
@@ -220,25 +215,17 @@ def render_register_form():
             
             try:
                 with st.spinner("Creating account..."):
-                    response = conn.auth.sign_up({
+                    response = supabase.auth.sign_up({
                         "email": email,
                         "password": password
                     })
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        user_data, error = response
-                    else:
-                        user_data = response
-                        error = None
-                    
-                    if error:
-                        st.error(f"Registration failed: {error.message if hasattr(error, 'message') else str(error)}")
-                    elif user_data and user_data.user:
-                        if user_data.user.email_confirmed_at:
+                    if response.user:
+                        if response.user.email_confirmed_at:
                             st.session_state.authenticated = True
                             st.session_state.user = {
-                                'email': user_data.user.email,
-                                'user_id': user_data.user.id
+                                'email': response.user.email,
+                                'user_id': response.user.id
                             }
                             st.success("Account created and signed in successfully!")
                             st.switch_page("pages/dashboard.py")
@@ -246,6 +233,8 @@ def render_register_form():
                             st.success("Account created! Please check your email and click the confirmation link before signing in.")
                             st.session_state.auth_mode = 'login'
                             st.rerun()
+                    elif response.error:
+                        st.error(f"Registration failed: {response.error.message}")
                     else:
                         st.error("Registration failed. Please try again.")
                         
@@ -286,15 +275,10 @@ def render_reset_request_form():
             
             try:
                 with st.spinner("Sending reset email..."):
-                    response = conn.auth.reset_password_for_email(email)
+                    response = supabase.auth.reset_password_for_email(email)
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        _, error = response
-                        if error:
-                            st.error(f"Reset failed: {error.message if hasattr(error, 'message') else str(error)}")
-                        else:
-                            st.success("If an account with that email exists, a password reset link has been sent. Please check your email.")
-                            st.info("The reset link will redirect you back here to set your new password.")
+                    if response.error:
+                        st.error(f"Reset failed: {response.error.message}")
                     else:
                         st.success("If an account with that email exists, a password reset link has been sent. Please check your email.")
                         st.info("The reset link will redirect you back here to set your new password.")
@@ -343,32 +327,26 @@ def render_reset_password_form():
             try:
                 with st.spinner("Updating password..."):
                     tokens = st.session_state.reset_tokens
-                    conn.auth.set_session(
+                    supabase.auth.set_session(
                         access_token=tokens['access_token'],
                         refresh_token=tokens['refresh_token']
                     )
                     
-                    response = conn.auth.update_user({"password": new_password})
+                    response = supabase.auth.update_user({"password": new_password})
                     
-                    if isinstance(response, tuple) and len(response) == 2:
-                        user_data, error = response
-                    else:
-                        user_data = response
-                        error = None
-                    
-                    if error:
-                        st.error(f"Password update failed: {error.message if hasattr(error, 'message') else str(error)}")
-                    elif user_data and user_data.user:
+                    if response.user:
                         del st.session_state.reset_tokens
                         
                         # Set authenticated state
                         st.session_state.authenticated = True
                         st.session_state.user = {
-                            'email': user_data.user.email,
-                            'user_id': user_data.user.id
+                            'email': response.user.email,
+                            'user_id': response.user.id
                         }
                         st.success("Password updated successfully! You are now signed in.")
                         st.switch_page("pages/dashboard.py")
+                    elif response.error:
+                        st.error(f"Password update failed: {response.error.message}")
                     else:
                         st.error("Password update failed. Please try again.")
                         
