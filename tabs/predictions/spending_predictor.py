@@ -277,8 +277,11 @@ class SpendingPredictor:
     
     def train_model(self, X, y):
         """Train Random Forest model with better parameters"""
-        if len(X) < 10:
-            st.warning("⚠️ Not enough data for reliable predictions (need at least 10 data points)")
+        min_required = max(5, len(X) // 4)  # Adaptive minimum
+        if len(X) < min_required:
+            st.warning(f"⚠️ Limited data ({len(X)} points). Predictions may be less reliable.")
+        # if len(X) < 10:
+        #     st.warning("⚠️ Not enough data for reliable predictions (need at least 10 data points)")
             return None
             
         X_train, X_test, y_train, y_test = train_test_split(
@@ -287,12 +290,13 @@ class SpendingPredictor:
         
         # Use better hyperparameters
         self.model = RandomForestRegressor(
-            n_estimators=200,
-            max_depth=15,
-            min_samples_split=5,
-            min_samples_leaf=2,
+            n_estimators=50,       # Reduced from 200
+            max_depth=10,         # Reduced from 15
+            min_samples_split=10, # Increased (simpler trees)
+            min_samples_leaf=5,   # Increased (simpler trees)
+            max_features='sqrt',  # Reduced feature subset
             random_state=42,
-            n_jobs=-1
+            n_jobs=2             # Limit CPU usage (2 cores) to avoid overloading
         )
         
         self.model.fit(X_train, y_train)
