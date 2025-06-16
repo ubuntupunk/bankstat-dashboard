@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from utils import debug_write
+from utils.utils import debug_write
 
 def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=None):
     """Create key financial metrics display"""
