@@ -9,8 +9,7 @@ from tabs.tools.tools_tab import render_tools_tab
 from tabs.leader.leader_board_main import leader_board_tab
 from models.ml_integration import MLCategoryIntegration
 import plotly.express as px
-from tabs.metrics.key_metrics_tab import render_key_metrics_tab
-from tabs.predictions.spending_predictor import render_prediction_tab
+from tabs.key_metrics_tab import render_key_metrics_tab
 # from tabs.goals.metrics_alerts import render_metrics_alerts
 
 def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date):
@@ -21,7 +20,7 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
             css = f.read()
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     except FileNotFoundError:
-        st.error("dashboard.css file not found. Please ensure it exists in the same directory as dashboard_tab.py.")
+        st.error("ai_expert.css file not found. Please ensure it exists in the same directory as tools_tab.py.")
         return
     
     st.markdown("""
@@ -32,9 +31,8 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     debug_write("Entered render_dashboard_tab")
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📈 Key Metrics", 
-        "🔮 Predictions",
         "🧠 My Neural Net", 
         "🎯 Goals", 
         "🏦 Services", 
@@ -44,22 +42,16 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
 
     with tab1:
         render_key_metrics_tab(analyzer, processor, db_connection, start_date, end_date)
-    
+    # with tab1:
+    #     render_metrics_alerts
     with tab2:
-        render_prediction_tab(analyzer, processor, db_connection, start_date, end_date)
-    
-    with tab3:
         ml_integration = MLCategoryIntegration(analyzer)
         ml_integration.render_ml_tab(processor)
-    
-    with tab4:    
+    with tab3:    
         render_goals_tab() 
-    
-    with tab5:
+    with tab4:
         render_services_tab()
-    
-    with tab6:
+    with tab5:
         render_tools_tab()
-    
-    with tab7:
+    with tab6:
         leader_board_tab()
