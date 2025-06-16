@@ -24,7 +24,7 @@ except FileNotFoundError:
 # Initialize Supabase client
 @st.cache_resource
 def init_supabase_client():
-    url = config.supabase_project_url
+    url = config.supabase_url
     key = config.supabase_api_key
     return create_client(url, key)
 
