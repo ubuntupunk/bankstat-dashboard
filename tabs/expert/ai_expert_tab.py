@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from cerebras.cloud.sdk import Cerebras
-from utils import debug_write
+from utils.utils import debug_write
 from config import Config
 
 

@@ -29,7 +29,7 @@ class SpendingPredictor:
         try:
             if self.db_connection:
                 collection = self.db_connection.get_collection()
-                if collection:
+                if collection is not None:
                     # Query all transactions
                     cursor = collection.find({})
                     data = list(cursor)
@@ -96,19 +96,29 @@ class SpendingPredictor:
         if df.empty:
             return None
             
-        # Convert date column
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df = df.dropna(subset=['date'])
-        df = df.sort_values('date')
+        processed_data = []
+        for _, row in df.iterrows():
+            date_val = pd.to_datetime(row.get('date'), errors='coerce')
+            if pd.isna(date_val):
+                continue
+            
+            debit = float(row.get('debits', 0) or 0)
+            credit = float(row.get('credits', 0) or 0)
+            
+            processed_data.append({
+                'date': date_val,
+                'debits': debit,
+                'credits': credit,
+                'net_spending': debit - credit,
+                'description': row.get('description', ''),
+                'category': row.get('category', 'Unknown')
+            })
         
-        # Ensure numeric columns
-        for col in ['debits', 'credits']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+        result_df = pd.DataFrame(processed_data)
+        result_df = result_df.dropna(subset=['date'])
+        result_df = result_df.sort_values('date')
         
-        df['net_spending'] = df['debits'] - df['credits']
-        
-        return self._aggregate_daily_data(df)
+        return self._aggregate_daily_data(result_df)
     
     def _aggregate_daily_data(self, df):
         """Aggregate transaction data by day for prediction"""

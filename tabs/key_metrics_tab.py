@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from dashboard_viz import create_dashboard_metrics, create_expense_breakdown_chart, create_cash_flow_chart
-from utils import debug_write
+from utils.utils import debug_write
 
 def render_key_metrics_tab(analyzer, processor, db_connection, start_date, end_date):
     # Check data availability
