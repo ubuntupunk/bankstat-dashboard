@@ -35,6 +35,10 @@ if "dashboard_start_date" not in st.session_state:
 if "dashboard_end_date" not in st.session_state:
     st.session_state.dashboard_end_date = datetime.now()
 
+# Initialize start_date and end_date with default values
+start_date = st.session_state.dashboard_start_date
+end_date = st.session_state.dashboard_end_date
+
 # Sidebar
 with st.sidebar:
     st.image("static/bankstatgreen.png", use_container_width=True)
@@ -50,11 +54,14 @@ with st.sidebar:
         key="dashboard_navigation_radio"
     )
     st.header("Date Range")
-    col1, col2 = st.columns(2)
-    with col1:
-        start_date = st.date_input("From", st.session_state.dashboard_start_date, key="dashboard_start_date")
-    with col2:
-        end_date = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
+    if tab_selection in ["📊 My Dashboard", "🎯 Goals"]:
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input("From", st.session_state.dashboard_start_date, key="dashboard_start_date")
+        with col2:
+            end_date = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
+    else:
+        st.info("Date range not applicable for this section.")
 
 # Header
 st.markdown(f'<h1 class="main-header">🏦 Bankstat - Welcome {user_email}</h1>', unsafe_allow_html=True)
