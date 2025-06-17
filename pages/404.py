@@ -56,9 +56,9 @@ def render_404_page():
         unsafe_allow_html=True
     )
 
-    st.title("404 - Page Not Found")
-    st.write("Oops! The page you are looking for does not exist.")
-    st.write("It might have been moved or deleted.")
+    st.title("Lost in the Digital Wilderness? 🧭")
+    st.write("Oops! It seems you've ventured off the beaten path.")
+    st.write("The page you're searching for might be on a coffee break, or perhaps it never existed in this dimension.")
 
     if st.button("Go to Home Page"):
         st.switch_page("streamlit_app.py")
