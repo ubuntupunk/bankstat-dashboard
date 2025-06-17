@@ -9,7 +9,7 @@ class Config:
         self.db_password = st.secrets["database"]["db_password"]
         self.mongodb_url = st.secrets["database"]["mongodb_url"]
         self.cerebras_api_key = st.secrets["cerebras"]["api_key"]
-
+        self.supabase_direct_url = st.secrets["supabase"]["supabase_direct_url"]
     def validate_config(self):
         """Validate that all required secrets are set"""
         missing = []

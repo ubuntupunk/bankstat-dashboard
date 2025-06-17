@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Tab
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
-from db import Base
+from db.db import Base
 import uuid
 
 # Association table for User-to-Role many-to-many relationship
@@ -68,13 +68,26 @@ class Goal(Base):
     user = relationship('User', back_populates='goals')
     goal_progress_entries = relationship('GoalProgress', back_populates='goal', cascade='all, delete-orphan') # New relationship
 
+class Category(Base):
+    __tablename__ = 'categories'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, unique=True, nullable=False, index=True)
+    type = Column(String, nullable=True) # e.g., 'Necessary Expenses', 'Income'
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    transactions = relationship('Transaction', back_populates='category_obj')
+    budgets = relationship('Budget', back_populates='category_obj')
+
 class Transaction(Base):
     __tablename__ = 'transactions'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey('categories.id', ondelete='SET NULL'), nullable=True, index=True) # New foreign key
     amount = Column(Float, nullable=False)
-    category = Column(String, nullable=False)
     date = Column(DateTime(timezone=True), nullable=False, index=True)
     description = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -82,15 +95,14 @@ class Transaction(Base):
 
     # Relationships
     user = relationship('User', back_populates='transactions')
-
-# Removed existing Incentive model as per plan
+    category_obj = relationship('Category', back_populates='transactions') # New relationship
 
 class Budget(Base):
     __tablename__ = 'budgets'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    category = Column(String, nullable=False, index=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey('categories.id', ondelete='SET NULL'), nullable=True, index=True) # New foreign key
     amount = Column(Float, nullable=False)
     period = Column(String, nullable=False)
     start_date = Column(DateTime(timezone=True), nullable=False)
@@ -100,6 +112,7 @@ class Budget(Base):
 
     # Relationships
     user = relationship('User', back_populates='budgets')
+    category_obj = relationship('Category', back_populates='budgets') # New relationship
 
 # New Models from multi-user.md
 

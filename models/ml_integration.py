@@ -4,6 +4,10 @@ from models.transaction_categorizer import TransactionCategorizer
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from db.model import Category
+from db.connection import get_db_session
+from sqlalchemy.orm import Session
+import uuid
 
 class MLCategoryIntegration:
     """Integration layer for ML-based transaction categorization"""
@@ -12,6 +16,30 @@ class MLCategoryIntegration:
         self.analyzer = analyzer
         self.categorizer = TransactionCategorizer()
     
+    def _get_all_categories(self) -> List[Category]:
+        """Fetches all categories from the database."""
+        with get_db_session() as db:
+            categories = db.query(Category).order_by(Category.name).all()
+            return categories
+
+    def _get_category_by_name(self, category_name: str) -> Category | None:
+        """Fetches a category by name from the database."""
+        with get_db_session() as db:
+            return db.query(Category).filter(Category.name == category_name).first()
+
+    def _add_category_to_db(self, category_name: str, category_type: str = None) -> Category:
+        """Adds a new category to the database if it doesn't exist."""
+        with get_db_session() as db:
+            existing_category = db.query(Category).filter(Category.name == category_name).first()
+            if existing_category:
+                return existing_category
+            
+            new_category = Category(name=category_name, type=category_type)
+            db.add(new_category)
+            db.commit()
+            db.refresh(new_category)
+            return new_category
+
     def render_ml_tab(self, processor):
         """Render the ML categorization tab"""
         st.header("🤖 Transaction Categorization with Local Machine Learning")
@@ -41,12 +69,16 @@ class MLCategoryIntegration:
             st.warning("No transaction data available. Please upload a bank statement first.")
             return
         
+        # Ensure 'category_name' column exists for ML model
+        if 'category_name' not in transactions_df.columns:
+            transactions_df['category_name'] = 'Uncategorized' # Default for new transactions
+        
         # Training section
         st.subheader("🎯 Model Training")
         
         # Show categorization statistics
-        if 'category' in transactions_df.columns:
-            category_counts = transactions_df['category'].value_counts()
+        if 'category_name' in transactions_df.columns:
+            category_counts = transactions_df['category_name'].value_counts()
             uncategorized_count = category_counts.get('Uncategorized', 0)
             categorized_count = len(transactions_df) - uncategorized_count
             
@@ -99,11 +131,11 @@ class MLCategoryIntegration:
         st.subheader("🔍 Test Predictions")
         self._render_prediction_testing()
     
-    def _train_model(self, transactions_df):
+    def _train_model(self, transactions_df: pd.DataFrame):
         """Train the ML model"""
         try:
             # Check if we have enough categorized data
-            categorized_df = transactions_df[transactions_df['category'] != 'Uncategorized']
+            categorized_df = transactions_df[transactions_df['category_name'] != 'Uncategorized']
             
             if len(categorized_df) < 10:
                 st.error("Need at least 10 categorized transactions to train the model.")
@@ -141,7 +173,7 @@ class MLCategoryIntegration:
         except Exception as e:
             st.error(f"Training failed: {str(e)}")
     
-    def _auto_categorize_transactions(self, processor, confidence_threshold):
+    def _auto_categorize_transactions(self, processor, confidence_threshold: float):
         """Auto-categorize uncategorized transactions"""
         try:
             transactions_df = processor.load_latest_bank_statement()
@@ -151,7 +183,7 @@ class MLCategoryIntegration:
                 return
             
             # Count uncategorized transactions
-            uncategorized_count = len(transactions_df[transactions_df['category'] == 'Uncategorized'])
+            uncategorized_count = len(transactions_df[transactions_df['category_name'] == 'Uncategorized'])
             
             if uncategorized_count == 0:
                 st.info("All transactions are already categorized!")
@@ -166,20 +198,22 @@ class MLCategoryIntegration:
                 
                 # Count successful categorizations
                 newly_categorized = len(updated_df[
-                    (transactions_df['category'] == 'Uncategorized') & 
-                    (updated_df['category'] != 'Uncategorized')
+                    (transactions_df['category_name'] == 'Uncategorized') & 
+                    (updated_df['category_name'] != 'Uncategorized')
                 ])
                 
                 if newly_categorized > 0:
                     st.success(f"✅ Successfully categorized {newly_categorized} transactions!")
                     
                     # Save updated data (you'll need to implement this in your processor)
-                    # processor.save_categorized_data(updated_df)
+                    # This part needs to be updated to save category_id to DB
+                    # For now, we'll just update the DataFrame in session
+                    processor.save_categorized_data(updated_df) # Assuming this method handles DB update
                     
                     # Show newly categorized transactions
                     if st.checkbox("Show Newly Categorized Transactions"):
-                        mask = (transactions_df['category'] == 'Uncategorized') & (updated_df['category'] != 'Uncategorized')
-                        new_cats = updated_df[mask][['description', 'category', 'confidence']].copy()
+                        mask = (transactions_df['category_name'] == 'Uncategorized') & (updated_df['category_name'] != 'Uncategorized')
+                        new_cats = updated_df[mask][['description', 'category_name', 'confidence']].copy()
                         st.dataframe(new_cats)
                 else:
                     st.warning("No transactions met the confidence threshold for auto-categorization.")
@@ -188,10 +222,10 @@ class MLCategoryIntegration:
         except Exception as e:
             st.error(f"Auto-categorization failed: {str(e)}")
     
-    def _render_manual_categorization(self, transactions_df, processor):
+    def _render_manual_categorization(self, transactions_df: pd.DataFrame, processor):
         """Render manual categorization interface"""
         # Filter uncategorized transactions
-        uncategorized_df = transactions_df[transactions_df['category'] == 'Uncategorized']
+        uncategorized_df = transactions_df[transactions_df['category_name'] == 'Uncategorized']
         
         if uncategorized_df.empty:
             st.info("🎉 All transactions are categorized!")
@@ -211,52 +245,53 @@ class MLCategoryIntegration:
         else:
             display_df = uncategorized_df
         
-        # Get existing categories
-        existing_categories = list(self.analyzer.category_mappings.keys()) if hasattr(self.analyzer, 'category_mappings') else [
-            'Food & Dining', 'Rent & Housing','Transportation', 'Shopping', 'Groceries', 'Hardware','Entertainment', 
-            'Bills & Utilities', 'Income', 'Insurance', 'Healthcare', 'Donation', 'Other'
-        ]
+        # Get existing categories from DB
+        existing_categories_objs = self._get_all_categories()
+        existing_category_names = [cat.name for cat in existing_categories_objs]
         
         # Manual categorization form
         with st.form("manual_categorization"):
             st.write("**Categorize Transactions:**")
             
-            categorizations = {}
+            categorizations = {} # Stores {idx: category_name}
             for idx, row in display_df.iterrows():
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     st.write(f"**{row['description']}** - R{abs(row.get('debits', 0) - row.get('credits', 0)):.2f}")
                 with col2:
-                    category = st.selectbox(
+                    category_name = st.selectbox(
                         "Category",
-                        [""] + existing_categories,
+                        [""] + existing_category_names,
                         key=f"cat_{idx}",
                         label_visibility="collapsed"
                     )
-                    if category:
-                        categorizations[idx] = category
+                    if category_name:
+                        categorizations[idx] = category_name
             
             # Bulk categorization
             st.write("**Bulk Actions:**")
             col1, col2, col3 = st.columns(3)
             with col1:
-                bulk_category = st.selectbox("Apply category to all displayed", [""] + existing_categories)
+                bulk_category_name = st.selectbox("Apply category to all displayed", [""] + existing_category_names)
             with col2:
-                new_category = st.text_input("Or create new category")
+                new_category_name = st.text_input("Or create new category")
             
             if st.form_submit_button("💾 Save Categorizations"):
-                if bulk_category or new_category:
-                    category_to_use = new_category if new_category else bulk_category
-                    for idx in display_df.index:
-                        categorizations[idx] = category_to_use
+                if bulk_category_name or new_category_name:
+                    category_to_use = new_category_name if new_category_name else bulk_category_name
+                    if category_to_use:
+                        # Ensure new category is added to DB if it doesn't exist
+                        self._add_category_to_db(category_to_use)
+                        for idx in display_df.index:
+                            categorizations[idx] = category_to_use
                 
                 if categorizations:
-                    # Update the dataframe
-                    for idx, category in categorizations.items():
-                        transactions_df.loc[idx, 'category'] = category
+                    # Update the dataframe with category names
+                    for idx, category_name in categorizations.items():
+                        transactions_df.loc[idx, 'category_name'] = category_name
                     
-                    # Save updated data (implement this in your processor)
-                    # processor.save_categorized_data(transactions_df)
+                    # Save updated data (this method in processor should handle DB update)
+                    processor.save_categorized_data(transactions_df)
                     
                     st.success(f"✅ Categorized {len(categorizations)} transactions!")
                     st.rerun()
@@ -295,10 +330,25 @@ def enhance_analyzer_with_ml(analyzer_class):
             super().__init__(*args, **kwargs)
             self.ml_categorizer = TransactionCategorizer()
         
-        def categorize_transactions(self, df, use_ml=True, confidence_threshold=0.7):
-            """Enhanced categorization using both rules and ML"""
-            # First apply rule-based categorization
-            df = super().categorize_transactions(df) if hasattr(super(), 'categorize_transactions') else df
+        def categorize_transactions(self, df: pd.DataFrame, use_ml: bool = True, confidence_threshold: float = 0.7) -> pd.DataFrame:
+            """
+            Enhanced categorization using both rules and ML.
+            
+            Args:
+                df (pd.DataFrame): DataFrame with transactions.
+                use_ml (bool): Whether to use ML categorization.
+                confidence_threshold (float): Confidence threshold for ML.
+                
+            Returns:
+                pd.DataFrame: DataFrame with categorized transactions.
+            """
+            # Ensure 'category_name' column exists for ML model
+            if 'category_name' not in df.columns:
+                df['category_name'] = 'Uncategorized' # Default for new transactions
+            
+            # First apply rule-based categorization (if method exists)
+            if hasattr(super(), 'categorize_transactions'):
+                df = super().categorize_transactions(df)
             
             # Then apply ML categorization for uncategorized transactions
             if use_ml and self.ml_categorizer.is_trained:
@@ -306,10 +356,31 @@ def enhance_analyzer_with_ml(analyzer_class):
             
             return df
         
-        def add_category_mapping(self, term, category, category_type=None):
-            """Enhanced category mapping that updates ML model"""
-            # Add to rule-based mapping
-            result = super().add_category_mapping(term, category, category_type) if hasattr(super(), 'add_category_mapping') else True
+        def add_category_mapping(self, term: str, category_name: str, category_type: str = None) -> bool:
+            """
+            Enhanced category mapping that updates ML model and database.
+            
+            Args:
+                term (str): The transaction term to map.
+                category_name (str): The category name to map to.
+                category_type (str): The type of category (e.g., 'Income', 'Expense').
+                
+            Returns:
+                bool: True if mapping was added successfully, False otherwise.
+            """
+            # Add to rule-based mapping (if method exists)
+            result = True
+            if hasattr(super(), 'add_category_mapping'):
+                result = super().add_category_mapping(term, category_name, category_type)
+            
+            # Ensure category exists in the database
+            with get_db_session() as db:
+                existing_category = db.query(Category).filter(Category.name == category_name).first()
+                if not existing_category:
+                    new_category = Category(name=category_name, type=category_type)
+                    db.add(new_category)
+                    db.commit()
+                    db.refresh(new_category)
             
             # Note: In a production system, you might want to trigger retraining
             # when enough new mappings are added

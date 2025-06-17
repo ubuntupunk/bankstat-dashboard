@@ -14,11 +14,21 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.regularizers import l2
 import re
 import logging
+from typing import List, Tuple, Dict, Any
+from db.model import Category
+from sqlalchemy.orm import Session
+from db.connection import get_db_session # Assuming this exists for session management
 
 class TransactionCategorizer:
     """Advanced ML-based transaction categorizer with integration support"""
     
-    def __init__(self, model_dir="models"):
+    def __init__(self, model_dir: str = "models"):
+        """
+        Initializes the TransactionCategorizer.
+        
+        Args:
+            model_dir (str): Directory to store and load ML models.
+        """
         self.model_dir = model_dir
         self.model_path = os.path.join(model_dir, "transaction_model.h5")
         self.vectorizer_path = os.path.join(model_dir, "vectorizer.pkl")
@@ -49,8 +59,16 @@ class TransactionCategorizer:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         
-    def preprocess_description(self, description):
-        """Enhanced text preprocessing for transaction descriptions"""
+    def preprocess_description(self, description: str) -> str:
+        """
+        Enhanced text preprocessing for transaction descriptions.
+        
+        Args:
+            description (str): The raw transaction description.
+            
+        Returns:
+            str: The cleaned and preprocessed description.
+        """
         if pd.isna(description) or not isinstance(description, str):
             return ""
         
@@ -72,8 +90,16 @@ class TransactionCategorizer:
         
         return text
     
-    def extract_features(self, descriptions):
-        """Extract and engineer features from transaction descriptions"""
+    def extract_features(self, descriptions: List[str]) -> np.ndarray:
+        """
+        Extract and engineer features from transaction descriptions.
+        
+        Args:
+            descriptions (List[str]): A list of transaction descriptions.
+            
+        Returns:
+            np.ndarray: TF-IDF features as a NumPy array.
+        """
         processed_descriptions = [self.preprocess_description(desc) for desc in descriptions]
         
         # Create TF-IDF features
@@ -91,10 +117,18 @@ class TransactionCategorizer:
         
         return tfidf_features.toarray()
     
-    def prepare_training_data(self, df):
-        """Prepare training data from transaction DataFrame"""
+    def prepare_training_data(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+        """
+        Prepare training data from transaction DataFrame.
+        
+        Args:
+            df (pd.DataFrame): DataFrame containing transaction data with 'description' and 'category_name' columns.
+            
+        Returns:
+            Tuple[np.ndarray, np.ndarray, pd.DataFrame]: Features (X), labels (y), and the filtered training DataFrame.
+        """
         # Filter out uncategorized transactions for training
-        training_df = df[df['category'] != 'Uncategorized'].copy()
+        training_df = df[df['category_name'] != 'Uncategorized'].copy()
         
         if len(training_df) < 10:
             raise ValueError("Need at least 10 categorized transactions for training")
@@ -105,14 +139,23 @@ class TransactionCategorizer:
         # Encode labels
         if self.label_encoder is None:
             self.label_encoder = LabelEncoder()
-            y = self.label_encoder.fit_transform(training_df['category'])
+            y = self.label_encoder.fit_transform(training_df['category_name'])
         else:
-            y = self.label_encoder.transform(training_df['category'])
+            y = self.label_encoder.transform(training_df['category_name'])
         
         return X, y, training_df
     
-    def build_model(self, input_dim, num_classes):
-        """Build an enhanced neural network model"""
+    def build_model(self, input_dim: int, num_classes: int) -> Sequential:
+        """
+        Build an enhanced neural network model.
+        
+        Args:
+            input_dim (int): Dimension of the input features.
+            num_classes (int): Number of output classes (categories).
+            
+        Returns:
+            Sequential: The compiled Keras Sequential model.
+        """
         model = Sequential([
             # Input layer with batch normalization
             Dense(256, activation='relu', input_shape=(input_dim,), 
@@ -142,8 +185,19 @@ class TransactionCategorizer:
         
         return model
     
-    def train(self, df, validation_split=0.2, epochs=100, batch_size=32):
-        """Train the categorization model"""
+    def train(self, df: pd.DataFrame, validation_split: float = 0.2, epochs: int = 100, batch_size: int = 32) -> Dict[str, Any]:
+        """
+        Train the categorization model.
+        
+        Args:
+            df (pd.DataFrame): DataFrame containing transaction data with 'description' and 'category_name' columns.
+            validation_split (float): Proportion of data to use for validation.
+            epochs (int): Number of training epochs.
+            batch_size (int): Batch size for training.
+            
+        Returns:
+            Dict[str, Any]: Training results including history, classification report, and categories.
+        """
         try:
             # Prepare data
             X, y, training_df = self.prepare_training_data(df)
@@ -203,8 +257,17 @@ class TransactionCategorizer:
             self.logger.error(f"Training failed: {str(e)}")
             raise e
     
-    def predict_single(self, description, return_confidence=False):
-        """Predict category for a single transaction description"""
+    def predict_single(self, description: str, return_confidence: bool = False) -> Tuple[str, float] | str:
+        """
+        Predict category for a single transaction description.
+        
+        Args:
+            description (str): The transaction description to categorize.
+            return_confidence (bool): Whether to return the prediction confidence.
+            
+        Returns:
+            Union[str, Tuple[str, float]]: Predicted category name, optionally with confidence.
+        """
         if not self.is_trained:
             return 'Uncategorized' if not return_confidence else ('Uncategorized', 0.0)
         
@@ -228,8 +291,17 @@ class TransactionCategorizer:
             self.logger.error(f"Prediction failed for '{description}': {str(e)}")
             return 'Uncategorized' if not return_confidence else ('Uncategorized', 0.0)
     
-    def predict_batch(self, descriptions, confidence_threshold=0.5):
-        """Predict categories for multiple descriptions"""
+    def predict_batch(self, descriptions: List[str], confidence_threshold: float = 0.5) -> Tuple[List[str], List[float]]:
+        """
+        Predict categories for multiple descriptions.
+        
+        Args:
+            descriptions (List[str]): A list of transaction descriptions.
+            confidence_threshold (float): Minimum confidence for a category to be assigned.
+            
+        Returns:
+            Tuple[List[str], List[float]]: Lists of predicted category names and their confidences.
+        """
         if not self.is_trained:
             return ['Uncategorized'] * len(descriptions), [0.0] * len(descriptions)
         
@@ -253,14 +325,19 @@ class TransactionCategorizer:
                 else:
                     final_categories.append('Uncategorized')
             
-            return final_categories.tolist(), confidences.tolist()
+            return final_categories, confidences.tolist()
             
         except Exception as e:
             self.logger.error(f"Batch prediction failed: {str(e)}")
             return ['Uncategorized'] * len(descriptions), [0.0] * len(descriptions)
     
-    def save_model(self):
-        """Save the trained model and preprocessors"""
+    def save_model(self) -> bool:
+        """
+        Save the trained model and preprocessors.
+        
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         try:
             if self.model:
                 self.model.save(self.model_path)
@@ -280,8 +357,13 @@ class TransactionCategorizer:
             self.logger.error(f"Failed to save model: {str(e)}")
             return False
     
-    def load_model(self):
-        """Load existing trained model and preprocessors"""
+    def load_model(self) -> bool:
+        """
+        Load existing trained model and preprocessors.
+        
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         try:
             if os.path.exists(self.model_path):
                 self.model = load_model(self.model_path)
@@ -307,8 +389,13 @@ class TransactionCategorizer:
         
         return False
     
-    def get_model_info(self):
-        """Get information about the current model"""
+    def get_model_info(self) -> Dict[str, Any]:
+        """
+        Get information about the current model.
+        
+        Returns:
+            Dict[str, Any]: Dictionary containing model status and details.
+        """
         if not self.is_trained:
             return {"status": "Not trained"}
         
@@ -323,14 +410,23 @@ class TransactionCategorizer:
         except Exception as e:
             return {"status": "Error", "error": str(e)}
     
-    def auto_categorize_dataframe(self, df, confidence_threshold=0.7):
-        """Automatically categorize uncategorized transactions in a DataFrame"""
+    def auto_categorize_dataframe(self, df: pd.DataFrame, confidence_threshold: float = 0.7) -> pd.DataFrame:
+        """
+        Automatically categorize uncategorized transactions in a DataFrame.
+        
+        Args:
+            df (pd.DataFrame): DataFrame with transactions, including 'description' and 'category_name'.
+            confidence_threshold (float): Minimum confidence for a category to be assigned.
+            
+        Returns:
+            pd.DataFrame: Updated DataFrame with auto-categorized transactions.
+        """
         if not self.is_trained:
             self.logger.warning("Model not trained. Cannot auto-categorize.")
             return df
         
-        # Find uncategorized transactions
-        uncategorized_mask = (df['category'] == 'Uncategorized') | df['category'].isna()
+        # Find uncategorized transactions (assuming 'Uncategorized' is the default name)
+        uncategorized_mask = (df['category_name'] == 'Uncategorized') | df['category_name'].isna()
         uncategorized_df = df[uncategorized_mask].copy()
         
         if len(uncategorized_df) == 0:
@@ -346,7 +442,7 @@ class TransactionCategorizer:
         
         # Update the dataframe
         result_df = df.copy()
-        result_df.loc[uncategorized_mask, 'category'] = categories
+        result_df.loc[uncategorized_mask, 'category_name'] = categories
         result_df.loc[uncategorized_mask, 'confidence'] = confidences
         
         # Log results

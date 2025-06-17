@@ -13,3 +13,5 @@ propelauth_py
 Authlib
 scikit-learn
 tensorflow-cpu
+sqlalchemy
+supabase
