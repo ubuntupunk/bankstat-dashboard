@@ -6,6 +6,8 @@ import sys
 import os
 import logging
 
+#supabase connection
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,8 +48,19 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Create a base class for ORM models
 Base = declarative_base()
 
+from contextlib import contextmanager
+
 def get_db():
     """Dependency to get DB session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@contextmanager
+def get_db_session():
+    """Context manager to get DB session"""
     db = SessionLocal()
     try:
         yield db

@@ -5,8 +5,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 from db.model import Category
-from db.connection import get_db_session
+from db.db import get_db_session
 from sqlalchemy.orm import Session
+from typing import List, Tuple, Dict, Any, Union
 import uuid
 
 class MLCategoryIntegration:

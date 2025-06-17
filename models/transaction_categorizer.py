@@ -17,7 +17,7 @@ import logging
 from typing import List, Tuple, Dict, Any
 from db.model import Category
 from sqlalchemy.orm import Session
-from db.connection import get_db_session # Assuming this exists for session management
+from db.db import get_db_session
 
 class TransactionCategorizer:
     """Advanced ML-based transaction categorizer with integration support"""
