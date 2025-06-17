@@ -58,7 +58,7 @@ class MLCategoryIntegration:
                 elif data_info.get('source') == 'Local File' and data_info.get('filename'):
                     st.error(f"❌ No valid transactions in local file '{data_info.get('filename')}' for the selected date range. Please upload a new bank statement.")
                 else:
-                    st.error("❌ No transaction data available. Please upload a bank statement in the 'Upload & Process' tab.")
+                    st.error("❌ No transaction data available. Please set date range or upload a bank statement in the 'Upload & Process' tab.")
                 return
             
             # Display data info

@@ -487,7 +487,11 @@ def render_prediction_tab(analyzer, processor, db_connection, start_date, end_da
         
         perf_col1, perf_col2, perf_col3 = st.columns(3)
         with perf_col1:
-            st.metric("R² Score", f"{metrics['r2']:.3f}")
+            st.metric(
+                "R² Score",
+                f"{metrics['r2']:.3f}",
+                help="The R² (R-squared) score is a statistical measure that represents the proportion of the variance for a dependent variable in a regression model. It indicates how well the model fits the observed data. A higher R² score (closer to 1) indicates a better fit."
+            )
         with perf_col2:
             st.metric("RMSE", f"R{metrics['rmse']:.0f}")
         with perf_col3:
