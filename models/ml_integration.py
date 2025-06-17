@@ -36,7 +36,7 @@ class MLCategoryIntegration:
             from models.transaction_categorizer import TransactionCategorizer
             
             # Initialize with fallback options
-            self.categorizer = TransactionCategorizer(use_tensorflow=True)
+            self.categorizer = TransactionCategorizer(use_tensorflow=False)
             logger.info("TransactionCategorizer initialized successfully")
             
             # Test basic functionality
@@ -118,12 +118,10 @@ class MLCategoryIntegration:
     def render_ml_tab(self, processor):
         """Render the ML categorization tab with comprehensive error handling"""
         st.header("🤖 Transaction Categorization with Local Machine Learning")
-        
-        # Check if categorizer is available
+         # Check if categorizer is available
         if self.categorizer is None:
             st.error("❌ ML Categorizer failed to initialize. Please check the logs.")
             return
-        
         try:
             # Model status
             model_info = self.categorizer.get_model_info()
