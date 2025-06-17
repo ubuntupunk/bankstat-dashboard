@@ -5,6 +5,21 @@ from sqlalchemy.sql import func
 from db.db import Base
 import uuid
 
+class Profile(Base):
+    __tablename__ = 'profiles'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    date_of_birth = Column(DateTime(timezone=True), nullable=True)
+    address = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    user = relationship('User', back_populates='profile')
+
 # Association table for User-to-Role many-to-many relationship
 user_role = Table(
     'user_role',
@@ -35,7 +50,7 @@ class User(Base):
     service_votes = relationship('ServiceVote', back_populates='user', cascade='all, delete-orphan')
     appliances = relationship('Appliance', back_populates='user', cascade='all, delete-orphan')
     energy_consumption = relationship('EnergyConsumption', back_populates='user', cascade='all, delete-orphan')
-    profile = relationship('Profile', back_populates='user', uselist=False, cascade='all, delete-orphan') # New relationship for profile
+    profile = relationship('Profile', back_populates='user', uselist=False, cascade='all, delete-orphan')
 
 
 class Role(Base):

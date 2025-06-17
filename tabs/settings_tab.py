@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from db.model import Category
-from db.connection import get_db_session
+from db.db import get_db_session
 from sqlalchemy.orm import Session
 from typing import List
 
