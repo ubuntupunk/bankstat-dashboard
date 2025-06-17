@@ -144,8 +144,6 @@ else:
             st.switch_page("pages/dashboard.py")
     
     else:
-        st.warning("Page not found")
-        st.query_params["page"] = "home"
-        st.rerun()
+        st.switch_page("pages/404.py")
 
 display_footer()

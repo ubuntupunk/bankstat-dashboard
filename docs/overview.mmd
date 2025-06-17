@@ -1,0 +1,74 @@
+```mermaid
+graph TD
+    A[streamlit_app.py] --> B{Authenticated?};
+
+    B -- No --> C[pages/home.py];
+    C -- Login Button --> D[pages/login.py];
+
+    B -- Yes --> E[pages/dashboard.py];
+    C -- Authenticated --> E;
+
+    E -- "🧠 Ask Bankstat" --> F[tabs/expert/ai_expert_tab.py];
+    E -- "📊 My Dashboard" --> G[tabs/dashboard_tab.py];
+    E -- "🎯 Goals" --> H[tabs/goals/goals_tab.py];
+    E -- "🧮 Tools" --> I[tabs/tools/tools_tab.py];
+    E -- "📁 Upload & Process" --> J[tabs/upload_tab.py];
+    E -- "⚙️ Settings" --> K[tabs/settings_tab.py];
+    E -- "🔒 Logout" --> L[pages/logout.py];
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px;
+    style B fill:#ccf,stroke:#333,stroke-width:2px;
+    style C fill:#fcf,stroke:#333,stroke-width:2px;
+    style D fill:#fcf,stroke:#333,stroke-width:2px;
+    style E fill:#9cf,stroke:#333,stroke-width:2px;
+    style F fill:#cff,stroke:#333,stroke-width:2px;
+    style G fill:#cff,stroke:#333,stroke-width:2px;
+    style H fill:#cff,stroke:#333,stroke-width:2px;
+    style I fill:#cff,stroke:#333,stroke-width:2px;
+    style J fill:#cff,stroke:#333,stroke-width:2px;
+    style K fill:#cff,stroke:#333,stroke-width:2px;
+    style L fill:#fcf,stroke:#333,stroke-width:2px;
+```
+
+I have analyzed the project's page and tab structure and created a Mermaid diagram to visualize their relationships.
+
+```mermaid
+graph TD
+    A[streamlit_app.py] --> B{Authenticated?};
+
+    B -- No --> C[pages/home.py];
+    C -- Login Button --> D[pages/login.py];
+
+    B -- Yes --> E[pages/dashboard.py];
+    C -- Authenticated --> E;
+
+    E -- "🧠 Ask Bankstat" --> F[tabs/expert/ai_expert_tab.py];
+    E -- "📊 My Dashboard" --> G[tabs/dashboard_tab.py];
+    E -- "🎯 Goals" --> H[tabs/goals/goals_tab.py];
+    E -- "🧮 Tools" --> I[tabs/tools/tools_tab.py];
+    E -- "📁 Upload & Process" --> J[tabs/upload_tab.py];
+    E -- "⚙️ Settings" --> K[tabs/settings_tab.py];
+    E -- "🔒 Logout" --> L[pages/logout.py];
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px;
+    style B fill:#ccf,stroke:#333,stroke-width:2px;
+    style C fill:#fcf,stroke:#333,stroke-width:2px;
+    style D fill:#fcf,stroke:#333,stroke-width:2px;
+    style E fill:#9cf,stroke:#333,stroke-width:2px;
+    style F fill:#cff,stroke:#333,stroke-width:2px;
+    style G fill:#cff,stroke:#333,stroke-width:2px;
+    style H fill:#cff,stroke:#333,stroke-width:2px;
+    style I fill:#cff,stroke:#333,stroke-width:2px;
+    style J fill:#cff,stroke:#333,stroke-width:2px;
+    style K fill:#cff,stroke:#333,stroke-width:2px;
+    style L fill:#fcf,stroke:#333,stroke-width:2px;
+```
+
+Based on this analysis, I propose the following UI improvements:
+
+1.  **Simplify Navigation:** Consolidate navigation to avoid redundancy. `streamlit_app.py` should handle top-level page routing (Home, Dashboard, Login, Logout), while `pages/dashboard.py` manages internal tab navigation.
+2.  **Single Logout Point:** Implement logout functionality in a single, consistent location, preferably the sidebar in `streamlit_app.py`, and remove redundant logout options from `pages/dashboard.py`.
+3.  **Visual Hierarchy and Grouping:** Group related navigation items within the sidebar using `st.container` or `st.expander` to improve clarity and organization.
+4.  **Contextual Date Range:** Consider making the date range input conditional or moving it to specific tabs that utilize it, rather than having it globally in the sidebar if not all tabs require it.
+5.  **Custom 404 Page:** Implement a dedicated "Page Not Found" page for better user experience when an invalid page is accessed.
+6.  **Consistency in Page/Tab Naming:** Ensure consistent naming conventions for pages and tabs across the application (e.g., "Dashboard" vs "My Dashboard").
