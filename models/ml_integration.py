@@ -1,591 +1,216 @@
 import streamlit as st
 import pandas as pd
-from models.transaction_categorizer import TransactionCategorizer
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-from db.model import Category
-from db.db import get_db_session
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from typing import List, Tuple, Dict, Any, Union, Optional
-import uuid
+import psutil
 import logging
-import traceback
-import sys
-import os
+from datetime import datetime
+from typing import Optional, Dict, Any
+from db.category_db import CategoryDB
+from models.ui_components import render_ml_tab_ui
+from models.ml_processor import MLProcessor
+from models.transaction_categorizer import TransactionCategorizer
 
-# Add the models directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with detailed format
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
 class MLCategoryIntegration:
-    """Integration layer for ML-based transaction categorization with stability fixes"""
+    """Integration layer for ML-based transaction categorization with uniform data handling."""
     
-    def __init__(self, analyzer):
+    def __init__(self, analyzer, db_connection):
         self.analyzer = analyzer
-        self.categorizer = None  # Initialize as None
-        self._initialize_categorizer()
+        self.db_connection = db_connection  # MongoDB connection for transactions
+        self.categorizer = None
+        self.db = CategoryDB()  # Supabase connection for categories
+        self.ml_processor = None
+        self._initialize_components()
     
-    def _initialize_categorizer(self):
-        """Initialize categorizer with proper error handling and fallbacks"""
+    def _initialize_components(self):
+        """Initialize categorizer and processor with memory monitoring."""
+        process = psutil.Process()
         try:
-            # Try to import the robust categorizer
-            from models.transaction_categorizer import TransactionCategorizer
-            
-            # Initialize with fallback options
-            self.categorizer = TransactionCategorizer(use_tensorflow=False)
-            logger.info("TransactionCategorizer initialized successfully")
-            
-            # Test basic functionality
-            model_info = self.categorizer.get_model_info()
-            logger.info(f"Model status: {model_info.get('status', 'Unknown')}")
-            
-        except ImportError as e:
-            logger.error(f"Failed to import TransactionCategorizer: {e}")
+            logger.debug("Initializing TransactionCategorizer")
+            self.categorizer = TransactionCategorizer(use_tensorflow=False)  # Disable TensorFlow for stability
+            self.ml_processor = MLProcessor(self.categorizer)
+            logger.info(f"Components initialized. Memory usage: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+        except Exception as e:
+            logger.error(f"Initialization failed: {e}", exc_info=True)
             self.categorizer = None
-        except Exception as e:
-            logger.error(f"Failed to initialize TransactionCategorizer: {e}")
-            # Try fallback initialization
-            try:
-                from models.transaction_categorizer import TransactionCategorizer
-                self.categorizer = TransactionCategorizer(use_tensorflow=False)
-                logger.info("TransactionCategorizer initialized with sklearn fallback")
-            except Exception as fallback_error:
-                logger.error(f"Fallback initialization also failed: {fallback_error}")
-                self.categorizer = None
+            self.ml_processor = None
     
-    def _get_all_categories(self) -> List[Category]:
-        """Fetches all categories from the database with proper error handling."""
+    def render_ml_tab(self, processor, start_date: datetime, end_date: datetime, data_source: str = "Auto"):
+        """Render the ML categorization tab with uniform data loading."""
+        logger.debug("Starting render_ml_tab")
         try:
-            with get_db_session() as db:
-                categories = db.query(Category).order_by(Category.name).all()
-                logger.info(f"Retrieved {len(categories)} categories from database")
-                return categories
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching categories: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error fetching categories: {e}")
-            return []
-
-    def _get_category_by_name(self, category_name: str) -> Optional[Category]:
-        """Fetches a category by name from the database with proper error handling."""
-        if not category_name:
-            return None
-        
-        try:
-            with get_db_session() as db:
-                category = db.query(Category).filter(Category.name == category_name).first()
-                return category
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching category '{category_name}': {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error fetching category '{category_name}': {e}")
-            return None
-
-    def _add_category_to_db(self, category_name: str, category_type: str = None) -> Optional[Category]:
-        """Adds a new category to the database if it doesn't exist with proper error handling."""
-        if not category_name:
-            return None
-        
-        try:
-            with get_db_session() as db:
-                # Check if category already exists
-                existing_category = db.query(Category).filter(Category.name == category_name).first()
-                if existing_category:
-                    logger.info(f"Category '{category_name}' already exists")
-                    return existing_category
-                
-                # Create new category
-                new_category = Category(name=category_name, type=category_type or 'Expense')
-                db.add(new_category)
-                db.commit()
-                db.refresh(new_category)
-                logger.info(f"Created new category: '{category_name}'")
-                return new_category
-                
-        except SQLAlchemyError as e:
-            logger.error(f"Database error creating category '{category_name}': {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error creating category '{category_name}': {e}")
-            return None
-
-    def render_ml_tab(self, processor):
-        """Render the ML categorization tab with comprehensive error handling"""
-        st.header("🤖 Transaction Categorization with Local Machine Learning")
-         # Check if categorizer is available
-        if self.categorizer is None:
-            st.error("❌ ML Categorizer failed to initialize. Please check the logs.")
-            return
-        try:
-            # Model status
-            model_info = self.categorizer.get_model_info()
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                status_color = "green" if model_info.get("status") == "Trained" else "red"
-                st.markdown(f"**Model Status:** :{status_color}[{model_info.get('status', 'Unknown')}]")
-            
-            with col2:
-                if model_info.get("categories"):
-                    st.markdown(f"**Categories:** {len(model_info['categories'])}")
-                else:
-                    st.markdown("**Categories:** 0")
-            
-            with col3:
-                if model_info.get("last_modified"):
-                    st.markdown(f"**Last Trained:** {model_info['last_modified']}")
-            
-            # Load current data with error handling
-            try:
-                transactions_df = processor.load_latest_bank_statement()
-                if transactions_df is None or transactions_df.empty:
-                    st.warning("No transaction data available. Please upload a bank statement first.")
-                    return
-            except Exception as e:
-                st.error(f"Error loading transaction data: {e}")
-                logger.error(f"Error loading transactions: {traceback.format_exc()}")
+            if self.categorizer is None or self.ml_processor is None:
+                logger.error("Categorizer or processor not initialized")
+                st.error("❌ ML Categorizer failed to initialize. Please check the logs.")
                 return
             
-            # Ensure 'category_name' column exists for ML model
+            # Load transactions with chunking and fallback
+            transactions_df, data_info = self._load_transactions(processor, start_date, end_date, data_source)
+            if transactions_df is None or transactions_df.empty:
+                logger.warning(f"No transaction data available. Source: {data_source}, Info: {data_info}")
+                if data_info.get('source') == 'Database' and data_info.get('documents_found', 0) == 0:
+                    st.error(f"❌ No transactions found in MongoDB for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. Please upload a bank statement or adjust the date range.")
+                elif data_info.get('source') == 'Local File' and data_info.get('filename'):
+                    st.error(f"❌ No valid transactions in local file '{data_info.get('filename')}' for the selected date range. Please upload a new bank statement.")
+                else:
+                    st.error("❌ No transaction data available. Please upload a bank statement in the 'Upload & Process' tab.")
+                return
+            
+            # Display data info
+            with st.expander("📋 Data Source Information", expanded=False):
+                for key, value in data_info.items():
+                    st.write(f"**{key.replace('_', ' ').title()}:** {value}")
+            
+            # Render UI components
+            render_ml_tab_ui(self.ml_processor, processor, transactions_df, self.db, self.db_connection)
+            
+        except Exception as e:
+            logger.error(f"Error in render_ml_tab: {e}", exc_info=True)
+            st.error(f"Error in ML tab: {e}")
+    
+    def _load_transactions(self, processor, start_date: datetime, end_date: datetime, data_source: str = "Auto") -> tuple[Optional[pd.DataFrame], Dict[str, Any]]:
+        """Load transactions from MongoDB or local file with chunking."""
+        transactions_df = pd.DataFrame()
+        data_info = {}
+        process = psutil.Process()
+        
+        # Check data source availability
+        local_available = processor.get_statement_info() is not None
+        db_available = False
+        try:
+            doc_count = self.db_connection.count_documents()
+            db_available = doc_count > 0
+            logger.debug(f"Local available: {local_available}, MongoDB documents: {doc_count}")
+        except Exception as e:
+            logger.error(f"MongoDB check failed: {e}", exc_info=True)
+        
+        # Auto-select data source
+        if data_source == "Auto":
+            data_source = "Database Query" if db_available else "Local File" if local_available else "No Data"
+        
+        # Load from MongoDB
+        if data_source == "Database Query" and db_available:
+            try:
+                logger.debug(f"Querying MongoDB for {start_date} to {end_date}")
+                with st.spinner("Loading data from MongoDB..."):
+                    query = {
+                        "$or": [
+                            {
+                                "period.start": {"$lte": end_date.strftime("%Y-%m-%d")},
+                                "period.end": {"$gte": start_date.strftime("%Y-%m-%d")}
+                            },
+                            {"period.start": {"$exists": False}}
+                        ]
+                    }
+                    documents = self.db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
+                    logger.debug(f"Found {len(documents)} MongoDB documents")
+                    
+                    if documents:
+                        for doc in documents:
+                            logger.debug(f"Processing MongoDB document: {list(doc.keys())}")
+                            df = processor.process_latest_json()  # Assumes this processes the document
+                            if not df.empty:
+                                df = self._standardize_columns(df)
+                                if 'date' in df.columns:
+                                    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                                    df = df[
+                                        (df['date'] >= pd.to_datetime(start_date)) &
+                                        (df['date'] <= pd.to_datetime(end_date))
+                                    ]
+                                if not df.empty:
+                                    transactions_df = pd.concat([transactions_df, df], ignore_index=True)
+                    
+                    if not transactions_df.empty:
+                        transactions_df = transactions_df.drop_duplicates().sort_values('date')
+                        data_info = {
+                            'source': 'MongoDB',
+                            'documents_found': len(documents),
+                            'transactions_loaded': len(transactions_df),
+                            'date_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
+                            'columns': transactions_df.columns.tolist()
+                        }
+                        logger.info(f"Loaded {len(transactions_df)} transactions from MongoDB. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                    else:
+                        logger.warning(f"No MongoDB transactions for {start_date} to {end_date}")
+                        if local_available:
+                            data_source = "Local File"
+            except Exception as e:
+                logger.error(f"MongoDB query failed: {e}", exc_info=True)
+                if local_available:
+                    logger.info("Falling back to local file")
+                    data_source = "Local File"
+        
+        # Load from Local File
+        if (data_source == "Local File" and local_available) or (data_source == "Database Query" and transactions_df.empty and local_available):
+            try:
+                with st.spinner("Loading data from local file..."):
+                    chunk_size = 1000
+                    chunks = []
+                    for chunk in processor.load_latest_bank_statement(chunk_size=chunk_size):
+                        if chunk is not None and not chunk.empty:
+                            chunk = self._standardize_columns(chunk)
+                            if 'date' in chunk.columns:
+                                chunk['date'] = pd.to_datetime(chunk['date'], errors='coerce')
+                                chunk = chunk[
+                                    (chunk['date'] >= pd.to_datetime(start_date)) &
+                                    (chunk['date'] <= pd.to_datetime(end_date))
+                                ]
+                            chunks.append(chunk)
+                            logger.debug(f"Processed chunk of {len(chunk)} rows. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                    
+                    if chunks:
+                        transactions_df = pd.concat(chunks, ignore_index=True).drop_duplicates().sort_values('date')
+                        statement_info = processor.get_statement_info()
+                        data_info = {
+                            'source': 'Local File',
+                            'filename': statement_info.get('filename', 'Unknown'),
+                            'file_period': f"{statement_info.get('period', {}).get('start', 'Unknown')} to {statement_info.get('period', {}).get('end', 'Unknown')}",
+                            'transactions_loaded': len(transactions_df),
+                            'selected_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
+                            'columns': transactions_df.columns.tolist()
+                        }
+                        logger.info(f"Loaded {len(transactions_df)} transactions from local file. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+            except Exception as e:
+                logger.error(f"Local file loading failed: {e}", exc_info=True)
+                data_info['error'] = str(e)
+        
+        # Ensure category_name column
+        if not transactions_df.empty:
             if 'category_name' not in transactions_df.columns:
                 transactions_df['category_name'] = 'Uncategorized'
-            
-            # Fill any NaN values in category_name
             transactions_df['category_name'] = transactions_df['category_name'].fillna('Uncategorized')
-            
-            # Training section
-            st.subheader("🎯 Model Training")
-            
-            # Show categorization statistics
-            self._render_categorization_stats(transactions_df)
-            
-            # Training controls
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                confidence_threshold = st.slider(
-                    "Confidence Threshold",
-                    min_value=0.1,
-                    max_value=1.0,
-                    value=0.7,
-                    step=0.1,
-                    help="Minimum confidence required for auto-categorization"
-                )
-            
-            with col2:
-                st.write("")  # Spacing
-                st.write("")
-                
-                # Training button
-                if st.button("🔄 Retrain Model", type="primary"):
-                    self._train_model(transactions_df)
-                
-                # Auto-categorize button
-                if st.button("✨ Auto-Categorize"):
-                    self._auto_categorize_transactions(processor, confidence_threshold)
-            
-            # Manual categorization section
-            st.subheader("✏️ Manual Categorization")
-            self._render_manual_categorization(transactions_df, processor)
-            
-            # Prediction testing
-            st.subheader("🔍 Test Predictions")
-            self._render_prediction_testing()
-            
-        except Exception as e:
-            st.error(f"Error in ML tab: {e}")
-            logger.error(f"Error in render_ml_tab: {traceback.format_exc()}")
-    
-    def _render_categorization_stats(self, transactions_df: pd.DataFrame):
-        """Render categorization statistics with error handling"""
-        try:
-            if 'category_name' in transactions_df.columns:
-                category_counts = transactions_df['category_name'].value_counts()
-                uncategorized_count = category_counts.get('Uncategorized', 0)
-                categorized_count = len(transactions_df) - uncategorized_count
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Transactions", len(transactions_df))
-                with col2:
-                    st.metric("Categorized", categorized_count)
-                with col3:
-                    st.metric("Uncategorized", uncategorized_count)
-                
-                # Category distribution chart
-                if len(category_counts) > 1:
-                    try:
-                        fig = px.pie(
-                            values=category_counts.values,
-                            names=category_counts.index,
-                            title="Transaction Category Distribution"
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                    except Exception as e:
-                        logger.error(f"Error creating pie chart: {e}")
-                        st.error("Could not display category distribution chart")
-        except Exception as e:
-            logger.error(f"Error rendering categorization stats: {e}")
-            st.error("Could not display categorization statistics")
-    
-    def _train_model(self, transactions_df: pd.DataFrame):
-        """Train the ML model with comprehensive error handling"""
-        try:
-            # Check if we have enough categorized data
-            categorized_df = transactions_df[
-                (transactions_df['category_name'] != 'Uncategorized') & 
-                (transactions_df['category_name'].notna())
-            ]
-            
-            if len(categorized_df) < 10:
-                st.error("Need at least 10 categorized transactions to train the model.")
-                st.info("Please categorize some transactions manually first.")
-                return
-            
-            with st.spinner("Training AI model... This may take a few minutes."):
-                progress_bar = st.progress(0)
-                progress_bar.progress(25)
-                
-                # Ensure categorizer is available
-                if self.categorizer is None:
-                    st.error("Categorizer not available")
-                    return
-                
-                # Train the model
-                training_results = self.categorizer.train(transactions_df)
-                progress_bar.progress(100)
-                
-                # Show results
-                st.success("✅ Model trained successfully!")
-                
-                # Display training metrics
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Training Samples", training_results.get('training_samples', 0))
-                with col2:
-                    st.metric("Validation Samples", training_results.get('validation_samples', 0))
-                with col3:
-                    accuracy = training_results.get('classification_report', {}).get('accuracy', 0)
-                    st.metric("Accuracy", f"{accuracy:.1%}")
-                
-                # Show category performance
-                if st.checkbox("Show Detailed Metrics"):
-                    report = training_results.get('classification_report', {})
-                    if report:
-                        try:
-                            metrics_df = pd.DataFrame(report).transpose()
-                            metrics_df = metrics_df.drop(['accuracy', 'macro avg', 'weighted avg'], errors='ignore')
-                            st.dataframe(metrics_df.round(3))
-                        except Exception as e:
-                            logger.error(f"Error displaying metrics: {e}")
-                            st.error("Could not display detailed metrics")
         
-        except Exception as e:
-            st.error(f"Training failed: {str(e)}")
-            logger.error(f"Training error: {traceback.format_exc()}")
+        return transactions_df, data_info
     
-    def _auto_categorize_transactions(self, processor, confidence_threshold: float):
-        """Auto-categorize uncategorized transactions with proper error handling"""
-        try:
-            transactions_df = processor.load_latest_bank_statement()
-            
-            if self.categorizer is None or not self.categorizer.is_trained:
-                st.error("Model is not trained. Please train the model first.")
-                return
-            
-            # Count uncategorized transactions
-            uncategorized_mask = (
-                (transactions_df['category_name'] == 'Uncategorized') | 
-                (transactions_df['category_name'].isna())
-            )
-            uncategorized_count = uncategorized_mask.sum()
-            
-            if uncategorized_count == 0:
-                st.info("All transactions are already categorized!")
-                return
-            
-            with st.spinner(f"Auto-categorizing {uncategorized_count} transactions..."):
-                # Auto-categorize
-                updated_df = self.categorizer.auto_categorize_dataframe(
-                    transactions_df, 
-                    confidence_threshold=confidence_threshold
-                )
-                
-                # Count successful categorizations
-                newly_categorized_mask = uncategorized_mask & (updated_df['category_name'] != 'Uncategorized')
-                newly_categorized = newly_categorized_mask.sum()
-                
-                if newly_categorized > 0:
-                    st.success(f"✅ Successfully categorized {newly_categorized} transactions!")
-                    
-                    # Save updated data with error handling
-                    try:
-                        if hasattr(processor, 'save_categorized_data'):
-                            processor.save_categorized_data(updated_df)
-                        else:
-                            st.warning("Unable to save categorized data - method not available")
-                    except Exception as e:
-                        st.error(f"Error saving categorized data: {e}")
-                        logger.error(f"Save error: {traceback.format_exc()}")
-                    
-                    # Show newly categorized transactions
-                    if st.checkbox("Show Newly Categorized Transactions"):
-                        try:
-                            new_cats = updated_df[newly_categorized_mask][
-                                ['description', 'category_name', 'confidence']
-                            ].copy()
-                            st.dataframe(new_cats)
-                        except Exception as e:
-                            logger.error(f"Error displaying newly categorized: {e}")
-                            st.error("Could not display newly categorized transactions")
-                else:
-                    st.warning("No transactions met the confidence threshold for auto-categorization.")
-                    st.info("Try lowering the confidence threshold or manually categorize more examples.")
+    def _standardize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize column names to match expected format."""
+        column_mapping = {
+            'Date': 'date',
+            'Transaction Date': 'date',
+            'Trans Date': 'date',
+            'Description': 'description',
+            'Details': 'description',
+            'Trans Details': 'description',
+            'Debit': 'debits',
+            'Debits': 'debits',
+            'Credit': 'credits',
+            'Credits': 'credits',
+            'Balance': 'balance',
+            'Running Balance': 'balance',
+            'Saldo': 'balance',
+            'Category': 'category_name',
+            'category': 'category_name'
+        }
+        df = df.rename(columns=column_mapping)
         
-        except Exception as e:
-            st.error(f"Auto-categorization failed: {str(e)}")
-            logger.error(f"Auto-categorization error: {traceback.format_exc()}")
-    
-    def _render_manual_categorization(self, transactions_df: pd.DataFrame, processor):
-        """Render manual categorization interface with error handling"""
-        try:
-            # Filter uncategorized transactions
-            uncategorized_mask = (
-                (transactions_df['category_name'] == 'Uncategorized') | 
-                (transactions_df['category_name'].isna())
-            )
-            uncategorized_df = transactions_df[uncategorized_mask]
-            
-            if uncategorized_df.empty:
-                st.info("🎉 All transactions are categorized!")
-                return
-            
-            st.write(f"**{len(uncategorized_df)} uncategorized transactions found**")
-            
-            # Pagination for large datasets
-            items_per_page = 10
-            total_pages = max(1, (len(uncategorized_df) - 1) // items_per_page + 1)
-            
-            if total_pages > 1:
-                page = st.number_input("Page", min_value=1, max_value=total_pages, value=1) - 1
-                start_idx = page * items_per_page
-                end_idx = min(start_idx + items_per_page, len(uncategorized_df))
-                display_df = uncategorized_df.iloc[start_idx:end_idx]
-            else:
-                display_df = uncategorized_df
-            
-            # Get existing categories from DB with error handling
-            existing_categories_objs = self._get_all_categories()
-            existing_category_names = [cat.name for cat in existing_categories_objs if cat and cat.name]
-            
-            # Add default categories if none exist
-            if not existing_category_names:
-                existing_category_names = ['Food', 'Transport', 'Shopping', 'Bills', 'Income', 'Other']
-            
-            # Manual categorization form
-            with st.form("manual_categorization"):
-                st.write("**Categorize Transactions:**")
-                
-                categorizations = {}  # Stores {idx: category_name}
-                
-                for idx, row in display_df.iterrows():
-                    try:
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            # Safely get amount
-                            amount = abs(row.get('debits', 0) - row.get('credits', 0))
-                            if amount == 0:
-                                amount = abs(row.get('amount', 0))
-                            
-                            description = str(row.get('description', 'Unknown'))[:50]
-                            st.write(f"**{description}** - R{amount:.2f}")
-                        
-                        with col2:
-                            category_name = st.selectbox(
-                                "Category",
-                                [""] + existing_category_names,
-                                key=f"cat_{idx}",
-                                label_visibility="collapsed"
-                            )
-                            if category_name:
-                                categorizations[idx] = category_name
-                    
-                    except Exception as e:
-                        logger.error(f"Error rendering transaction {idx}: {e}")
-                        continue
-                
-                # Bulk categorization
-                st.write("**Bulk Actions:**")
-                col1, col2 = st.columns(2)
-                with col1:
-                    bulk_category_name = st.selectbox(
-                        "Apply category to all displayed", 
-                        [""] + existing_category_names
-                    )
-                with col2:
-                    new_category_name = st.text_input("Or create new category")
-                
-                if st.form_submit_button("💾 Save Categorizations"):
-                    try:
-                        # Handle bulk categorization
-                        if bulk_category_name or new_category_name:
-                            category_to_use = new_category_name if new_category_name else bulk_category_name
-                            if category_to_use:
-                                # Ensure new category is added to DB if it doesn't exist
-                                self._add_category_to_db(category_to_use)
-                                for idx in display_df.index:
-                                    categorizations[idx] = category_to_use
-                        
-                        if categorizations:
-                            # Update the dataframe with category names
-                            for idx, category_name in categorizations.items():
-                                transactions_df.loc[idx, 'category_name'] = category_name
-                            
-                            # Save updated data with error handling
-                            try:
-                                if hasattr(processor, 'save_categorized_data'):
-                                    processor.save_categorized_data(transactions_df)
-                                    st.success(f"✅ Categorized {len(categorizations)} transactions!")
-                                    st.rerun()
-                                else:
-                                    st.error("Save method not available")
-                            except Exception as e:
-                                st.error(f"Error saving categorizations: {e}")
-                                logger.error(f"Save categorizations error: {traceback.format_exc()}")
-                        else:
-                            st.warning("No categorizations to save")
-                    
-                    except Exception as e:
-                        st.error(f"Error processing categorizations: {e}")
-                        logger.error(f"Categorization processing error: {traceback.format_exc()}")
+        required_columns = ['date', 'description', 'debits', 'credits', 'balance', 'category_name']
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = 'Unknown' if col in ['description', 'category_name'] else 0.0
         
-        except Exception as e:
-            st.error(f"Error in manual categorization: {e}")
-            logger.error(f"Manual categorization error: {traceback.format_exc()}")
-    
-    def _render_prediction_testing(self):
-        """Render prediction testing interface with error handling"""
-        try:
-            if self.categorizer is None or not self.categorizer.is_trained:
-                st.info("Train the model first to test predictions.")
-                return
-            
-            # Test single prediction
-            test_description = st.text_input(
-                "Test Description",
-                placeholder="e.g., 'WALMART SUPERCENTER #1234'"
-            )
-            
-            if test_description:
-                try:
-                    result = self.categorizer.predict_single(
-                        test_description, 
-                        return_confidence=True
-                    )
-                    
-                    if isinstance(result, tuple):
-                        category, confidence = result
-                    else:
-                        category, confidence = result, 0.0
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write(f"**Predicted Category:** {category}")
-                    with col2:
-                        confidence_color = "green" if confidence > 0.7 else "orange" if confidence > 0.5 else "red"
-                        st.write(f"**Confidence:** :{confidence_color}[{confidence:.1%}]")
-                
-                except Exception as e:
-                    st.error(f"Prediction failed: {e}")
-                    logger.error(f"Prediction error: {traceback.format_exc()}")
-        
-        except Exception as e:
-            st.error(f"Error in prediction testing: {e}")
-            logger.error(f"Prediction testing error: {traceback.format_exc()}")
-
-
-# Enhanced analyzer integration with proper error handling
-def enhance_analyzer_with_ml(analyzer_class):
-    """Enhance the existing analyzer with ML capabilities"""
-    
-    class EnhancedAnalyzer(analyzer_class):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            try:
-                self.ml_categorizer = TransactionCategorizer()
-                logger.info("ML categorizer initialized in enhanced analyzer")
-            except Exception as e:
-                logger.error(f"Failed to initialize ML categorizer in enhanced analyzer: {e}")
-                self.ml_categorizer = None
-        
-        def categorize_transactions(self, df: pd.DataFrame, use_ml: bool = True, confidence_threshold: float = 0.7) -> pd.DataFrame:
-            """Enhanced categorization using both rules and ML with error handling."""
-            try:
-                # Ensure 'category_name' column exists
-                if 'category_name' not in df.columns:
-                    df['category_name'] = 'Uncategorized'
-                
-                # Fill any NaN values
-                df['category_name'] = df['category_name'].fillna('Uncategorized')
-                
-                # First apply rule-based categorization (if method exists)
-                if hasattr(super(), 'categorize_transactions'):
-                    try:
-                        df = super().categorize_transactions(df)
-                    except Exception as e:
-                        logger.error(f"Error in rule-based categorization: {e}")
-                
-                # Then apply ML categorization for uncategorized transactions
-                if use_ml and self.ml_categorizer and self.ml_categorizer.is_trained:
-                    try:
-                        df = self.ml_categorizer.auto_categorize_dataframe(df, confidence_threshold)
-                    except Exception as e:
-                        logger.error(f"Error in ML categorization: {e}")
-                
-                return df
-            
-            except Exception as e:
-                logger.error(f"Error in categorize_transactions: {e}")
-                return df
-        
-        def add_category_mapping(self, term: str, category_name: str, category_type: str = None) -> bool:
-            """Enhanced category mapping with proper error handling."""
-            try:
-                # Add to rule-based mapping (if method exists)
-                result = True
-                if hasattr(super(), 'add_category_mapping'):
-                    try:
-                        result = super().add_category_mapping(term, category_name, category_type)
-                    except Exception as e:
-                        logger.error(f"Error in rule-based category mapping: {e}")
-                        result = False
-                
-                # Ensure category exists in the database
-                try:
-                    with get_db_session() as db:
-                        existing_category = db.query(Category).filter(Category.name == category_name).first()
-                        if not existing_category:
-                            new_category = Category(name=category_name, type=category_type or 'Expense')
-                            db.add(new_category)
-                            db.commit()
-                            db.refresh(new_category)
-                            logger.info(f"Added category to database: {category_name}")
-                except SQLAlchemyError as e:
-                    logger.error(f"Database error adding category: {e}")
-                    result = False
-                except Exception as e:
-                    logger.error(f"Unexpected error adding category: {e}")
-                    result = False
-                
-                return result
-            
-            except Exception as e:
-                logger.error(f"Error in add_category_mapping: {e}")
-                return False
-    
-    return EnhancedAnalyzer
+        return df

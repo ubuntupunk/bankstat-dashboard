@@ -49,8 +49,8 @@ def render_dashboard_tab(analyzer, processor, db_connection, start_date, end_dat
         render_prediction_tab(analyzer, processor, db_connection, start_date, end_date)
     
     with tab3:
-        ml_integration = MLCategoryIntegration(analyzer)
-        ml_integration.render_ml_tab(processor)
+        ml_integration = MLCategoryIntegration(analyzer, db_connection)
+        ml_integration.render_ml_tab(processor, start_date, end_date)
     
     with tab4:    
         render_goals_tab() 
