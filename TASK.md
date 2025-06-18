@@ -31,6 +31,7 @@ JSON load failed: All arrays must be of the same length (2025-06-16)
 
 - [ ] on streamlit-cloud branch After login flow, failed to login https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=UhzY2V1OAFbeJCixK6Cs6Oc0FdzCqJ&nonce=Fd5bwewLt97sSDlORlTf&code_challenge=CeixcfcPgiPSPenV4lvneknOliPGD5gsafn-kJMc07w&code_challenge_method=S256
 
+- [x] Our problem with our sidebar date range not passing values to the children tabs occurred in commit 5dbfa1e when we introduced conditional logic in dashboard.py page to render the date range. Please investigate what is going on here
 
 ### Plan for Streamlit App Improvements (2025-06-02)
 
