@@ -1,11 +1,32 @@
 import streamlit as st
 import os
+from db.model import Category
+from db.db import get_db_session
+from db.category_db import CategoryDB # Import the new CategoryDB
+from sqlalchemy.orm import Session
+from typing import List
+from utils.utils import debug_write
+
+# Instantiate CategoryDB globally or pass it around if needed
+category_db_instance = CategoryDB()
+
+def _get_all_categories() -> List[dict]:
+    """Fetches all categories using CategoryDB."""
+    debug_write("Calling CategoryDB.get_all_categories()")
+    return category_db_instance.get_all_categories()
+
+def _add_category_to_db(category_name: str, category_type: str = None) -> dict:
+    """Adds a new category using CategoryDB."""
+    debug_write(f"Calling CategoryDB.add_category with name={category_name}, type={category_type}")
+    return category_db_instance.add_category(category_name, category_type)
 
 def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
+    debug_write("Entering render_settings_tab")
     st.header("⚙️ Settings")
 
     # Show current statement info
     st.subheader("📋 Current Statement")
+    debug_write("Checking statement info")
     statement_info = processor.get_statement_info()
     if statement_info:
         col1, col2 = st.columns(2)
@@ -20,33 +41,67 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
     else:
         st.info("No bank statement currently loaded")
 
+    debug_write("Starting category management section")
     # Category management
     st.subheader("🏷️ Category Management")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        new_term = st.text_input("Transaction Term", placeholder="e.g., 'netflix'")
-        new_category = st.text_input("Category", placeholder="e.g., 'Entertainment'")
+    # No longer need get_db_session here as CategoryDB handles its own connection
+    debug_write("Fetching existing categories without explicit db session in settings_tab.")
+    try:
+        existing_categories_objs = _get_all_categories() # Call without db session
+        debug_write(f"Fetched {len(existing_categories_objs)} existing categories.")
+        existing_category_names = [cat['name'] for cat in existing_categories_objs] # Access 'name' key
+        debug_write(f"Existing category names: {existing_category_names}")
+    except Exception as e:
+        debug_write(f"Error fetching categories: {e}")
+        st.error(f"Error loading categories: {e}")
+        existing_category_names = [] # Ensure it's an empty list to avoid further errors
+    
+    st.write("### Existing Categories")
+    if existing_category_names:
+        st.write(", ".join(existing_category_names))
+    else:
+        st.info("No categories defined yet.")
 
-    with col2:
-        category_type = st.selectbox(
-            "Category Type",
-            ['Necessary Expenses', 'Discretionary Expenses', 'Investment Spending', 'Income', 'Notices', 'Special']
-        )
+        st.write("### Add New Category Mapping")
+        col1, col2 = st.columns(2)
+        with col1:
+            new_term = st.text_input("Transaction Term", placeholder="e.g., 'netflix'")
+            new_category_name = st.text_input("Category Name", placeholder="e.g., 'Entertainment'")
 
-    if st.button("➕ Add Category Mapping"):
-        if new_term and new_category:
-            try:
-                success = analyzer.add_category_mapping(new_term, new_category, category_type)
-                if success:
-                    st.success(f"✅ Added mapping: '{new_term}' → '{new_category}' ({category_type})")
-                else:
-                    st.error("Failed to add category mapping")
-            except Exception as e:
-                st.error(f"Error adding mapping: {str(e)}")
-        else:
-            st.error("Please fill in both term and category")
+        with col2:
+            category_type = st.selectbox(
+                "Category Type",
+                ['Necessary Expenses', 'Discretionary Expenses', 'Investment Spending', 'Income', 'Notices', 'Special']
+            )
 
+        if st.button("➕ Add Category Mapping"):
+            if new_term and new_category_name:
+                debug_write(f"Attempting to add mapping for term '{new_term}' and category '{new_category_name}'")
+                try:
+                    # Add category to DB if it doesn't exist using CategoryDB
+                    added_category = _add_category_to_db(new_category_name, category_type) # Call without db session
+                    if added_category:
+                        debug_write("Category added to DB (or already exists)")
+                        
+                        # Add mapping to analyzer (which might store it in a config or DB)
+                        success = analyzer.add_category_mapping(new_term, new_category_name, category_type)
+                        if success:
+                            st.success(f"✅ Added mapping: '{new_term}' → '{new_category_name}' ({category_type})")
+                            st.rerun() # Rerun to update category list
+                        else:
+                            st.error("Failed to add category mapping")
+                        debug_write("Category mapping attempt finished")
+                    else:
+                        st.error("Failed to add category to database.")
+                        debug_write("Failed to add category to database via CategoryDB.")
+                except Exception as e:
+                    st.error(f"Error adding mapping: {str(e)}")
+                    debug_write(f"Error during mapping: {str(e)}")
+            else:
+                st.error("Please fill in both term and category name")
+
+    debug_write("Starting API Configuration section")
     # API Configuration
     st.subheader("🔑 API Configuration")
     current_api_key = st.text_input(
@@ -57,9 +112,19 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
     )
 
     if st.button("💾 Save API Key"):
-        # In a real app, you'd save this securely
-        st.success("✅ API key updated")
+        debug_write("Save API Key button clicked")
+        try:
+            # Update the API key in the pdf_processor instance
+            pdf_processor.api_key = current_api_key
+            # In a real application, you would persist this key securely.
+            # For this example, we'll just confirm it's updated in the current session.
+            st.success("✅ API key updated in current session.")
+            debug_write("Upstage API key updated in pdf_processor.")
+        except Exception as e:
+            st.error(f"Error saving API key: {str(e)}")
+            debug_write(f"Error saving API key: {str(e)}")
 
+    debug_write("Starting Database Connection Test section")
     # Database Connection Test
     st.subheader("🛢️ Database Connection")
     if st.button("🔍 Test Database Connection"):
@@ -69,7 +134,9 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
         else:
             st.error(f"❌ {message}")
 
+    debug_write("Starting System Information section")
     # System Information
     st.subheader("ℹ️ System Information")
     st.info(f"**Current Directory:** {os.getcwd()}")
     st.info(f"**Environment Variables:** {len(os.environ)} loaded")
+    debug_write("Exiting render_settings_tab")

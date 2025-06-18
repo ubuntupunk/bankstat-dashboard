@@ -59,12 +59,28 @@ with st.sidebar:
     st.header("Date Range")
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input("From", st.session_state.dashboard_start_date, key="dashboard_start_date")
+        start_date_input = st.date_input("From", st.session_state.dashboard_start_date, key="dashboard_start_date")
     with col2:
-        end_date = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
+        end_date_input = st.date_input("To", st.session_state.dashboard_end_date, key="dashboard_end_date")
+
+    # The st.date_input widgets automatically update st.session_state.dashboard_start_date and st.session_state.dashboard_end_date
+    # We only need to display the info message if the date range is not applicable for the current tab
+    if tab_selection not in ["📊 My Dashboard", "🎯 Goals"]:
+        st.info("Date range not applicable for this section.")
+    
+    debug_write(f"Dashboard UI selected date range: {st.session_state.dashboard_start_date.strftime('%Y-%m-%d')} to {st.session_state.dashboard_end_date.strftime('%Y-%m-%d')}")
 
 # Header
 st.markdown(f'<h1 class="main-header">🏦 Bankstat - Welcome {user_email}</h1>', unsafe_allow_html=True)
+
+# Determine the dates to pass to the tabs based on selection
+if tab_selection in ["📊 My Dashboard", "🎯 Goals"]:
+    start_date = st.session_state.dashboard_start_date
+    end_date = st.session_state.dashboard_end_date
+else:
+    # If date range is not applicable, pass default values or None
+    start_date = datetime.now() - timedelta(days=30)
+    end_date = datetime.now()
 
 # Initialize components
 processor = StreamlitAnalytics()
@@ -78,9 +94,10 @@ if tab_selection == "📁 Upload & Process":
 elif tab_selection == "🧠 Ask Bankstat":
     render_ai_advisor_tab()
 elif tab_selection == "📊 My Dashboard":
-    debug_write("Debug: Calling render_dashboard_tab")
+    debug_write(f"Calling render_dashboard_tab with dates: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
     render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
 elif tab_selection == "🎯 Goals":
+    debug_write(f"Calling render_goals_tab with dates: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
     render_goals_tab()
 elif tab_selection == "🧮 Tools":
     render_tools_tab()

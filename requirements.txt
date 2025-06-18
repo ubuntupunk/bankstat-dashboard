@@ -7,6 +7,7 @@ python-dotenv>=1.0.0
 pymongo>=4.5.0
 python-dotenv>=1.0.0
 lxml>=5.4.0
+psycopg2-binary
 streamlit-authenticator
 streamlit-mermaid
 propelauth_py
@@ -14,3 +15,6 @@ Authlib
 uuid
 scikit-learn
 tensorflow-cpu
+cerebras_cloud_sdk
+sqlalchemy
+supabase

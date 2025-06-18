@@ -487,11 +487,23 @@ def render_prediction_tab(analyzer, processor, db_connection, start_date, end_da
         
         perf_col1, perf_col2, perf_col3 = st.columns(3)
         with perf_col1:
-            st.metric("R² Score", f"{metrics['r2']:.3f}")
+            st.metric(
+                "R² Score",
+                f"{metrics['r2']:.3f}",
+                help="The R² (R-squared) score is a statistical measure that represents the proportion of the variance for a dependent variable in a regression model. It indicates how well the model fits the observed data. A higher R² score (closer to 1) indicates a better fit."
+            )
         with perf_col2:
-            st.metric("RMSE", f"R{metrics['rmse']:.0f}")
+            st.metric(
+                "RMSE",
+                f"R{metrics['rmse']:.0f}",
+                help="RMSE (Root Mean Squared Error) is a common measure of the differences between values predicted by a model and the values observed. It is the standard deviation of the residuals (prediction errors). Lower RMSE values indicate a better fit of the model to the data."
+            )
         with perf_col3:
-            st.metric("Training Size", f"{metrics['train_size']} days")
+            st.metric(
+                "Training Size",
+                f"{metrics['train_size']} days",
+                help="The number of data points (days) used to train the prediction model. A larger training size generally leads to a more robust and accurate model, provided the data is representative."
+            )
     
     # Generate predictions
     with st.spinner("🔮 Generating predictions..."):

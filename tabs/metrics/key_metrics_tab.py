@@ -33,12 +33,10 @@ def render_key_metrics_tab(analyzer, processor, db_connection, start_date, end_d
             help="Choose whether to query database by date range or use local file",
             key="data_source_select"
         )
-    
     # Handle no data case
     if data_source == "No Data":
         st.warning("⚠️ No data available. Please upload a bank statement in the 'Upload & Process' tab.")
-        # Fallback to dummy data for testing
-        st.info("Using dummy data for dashboard preview")
+        debug_write("Using dummy data for dashboard preview as no data source is available.")
         transactions_df = pd.DataFrame({
             'date': [pd.to_datetime('2025-06-01'), pd.to_datetime('2025-06-02')],
             'description': ['Test Income', 'Test Expense'],
@@ -59,7 +57,7 @@ def render_key_metrics_tab(analyzer, processor, db_connection, start_date, end_d
         
         if data_source == "Database Query":
             try:
-                st.info(f"🔍 Querying database for transactions between {start_date} and {end_date}")
+                debug_write(f"Attempting to query database for transactions between {start_date.strftime('%Y-%m-%d')} and {end_date.strftime('%Y-%m-%d')}")
                 with st.spinner("Loading data from database..."):
                     query = {
                         "$or": [
@@ -73,136 +71,148 @@ def render_key_metrics_tab(analyzer, processor, db_connection, start_date, end_d
                         ]
                     }
                     documents = db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
-                    debug_write(f"Found {len(documents)} document(s) in database")
+                    debug_write(f"Found {len(documents)} document(s) in database matching query.")
                     
                     if documents:
                         for doc in documents:
-                            debug_write(f"Processing document with keys: {list(doc.keys())}")
-                            df = processor.process_latest_json()
+                            debug_write(f"Processing MongoDB document: {doc.get('filename', 'N/A')}. Document keys: {list(doc.keys())}")
+                            df = processor.process_latest_json(json_data=doc) # Pass the document data
+                            debug_write(f"DataFrame from doc '{doc.get('filename', 'N/A')}' has {len(df)} rows before filtering.")
+
                             if not df.empty:
-                                # Standardize column names
+                                # Standardize column names (replicate _standardize_columns logic from ml_integration)
                                 column_mapping = {
-                                    'Date': 'date',
-                                    'Transaction Date': 'date',
-                                    'Trans Date': 'date',
-                                    'Description': 'description',
-                                    'Details': 'description',
-                                    'Trans Details': 'description',
-                                    'Debit': 'debits',
-                                    'Debits': 'debits',
-                                    'Credit': 'credits',
-                                    'Credits': 'credits',
-                                    'Balance': 'balance',
-                                    'Running Balance': 'balance',
-                                    'Saldo': 'balance'
+                                    'Date': 'date', 'Transaction Date': 'date', 'Trans Date': 'date',
+                                    'Description': 'description', 'Details': 'description', 'Trans Details': 'description',
+                                    'Narrative Description': 'description',
+                                    'Debit': 'debits', 'Debits': 'debits', 'Debits (R)': 'debits', 'Fees (R) Debits (R)': 'debits',
+                                    'Credit': 'credits', 'Credits': 'credits', 'Credits (R)': 'credits',
+                                    'Balance': 'balance', 'Balance (R)': 'balance', 'Running Balance': 'balance', 'Saldo': 'balance',
+                                    'Category': 'category', 'category': 'category' # Ensure category is mapped
                                 }
-                                df = df.rename(columns=column_mapping)
+                                df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
                                 
-                                # Ensure required columns
-                                required_columns = ['date', 'description', 'debits', 'credits', 'balance']
+                                required_columns = ['date', 'description', 'debits', 'credits', 'balance', 'category']
                                 for col in required_columns:
                                     if col not in df.columns:
-                                        df[col] = 'Unknown' if col == 'description' else 0.0
+                                        df[col] = 'Unknown' if col in ['description', 'category'] else 0.0
                                 
-                                # Filter by date
+                                # Ensure 'date' column is datetime and drop NaT
                                 if 'date' in df.columns:
                                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                                    df = df[
+                                    df.dropna(subset=['date'], inplace=True)
+                                    debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' date column min/max: {df['date'].min()} / {df['date'].max()}")
+                                    debug_write(f"Filtering MongoDB doc '{doc.get('filename', 'N/A')}' for range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                                    df_filtered = df[
                                         (df['date'] >= pd.to_datetime(start_date)) &
                                         (df['date'] <= pd.to_datetime(end_date))
                                     ]
-                                
-                                if not df.empty:
-                                    transactions_df = pd.concat([transactions_df, df], ignore_index=True)
+                                    debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' rows after date filter: {len(df_filtered)}")
+                                else:
+                                    df_filtered = df # No date column to filter, use as is
+                                    debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' has no 'date' column. Using all {len(df_filtered)} rows.")
+
+                                if not df_filtered.empty:
+                                    transactions_df = pd.concat([transactions_df, df_filtered], ignore_index=True)
+                                    debug_write(f"Added {len(df_filtered)} transactions from MongoDB doc to total. Current total: {len(transactions_df)}")
+                                else:
+                                    debug_write(f"No transactions from MongoDB doc '{doc.get('filename', 'N/A')}' after date filtering or date column issues.")
+                            else:
+                                debug_write(f"Processor returned empty DataFrame for MongoDB document '{doc.get('filename', 'N/A')}'.")
                     
+                    # After processing all documents, apply the overall date range filter one last time
+                    if not transactions_df.empty:
+                        transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce') # Ensure date is datetime before final filter
+                        transactions_df.dropna(subset=['date'], inplace=True) # Drop rows where date conversion failed
+                        transactions_df = transactions_df[
+                            (transactions_df['date'] >= pd.to_datetime(start_date)) &
+                            (transactions_df['date'] <= pd.to_datetime(end_date))
+                        ]
+                        debug_write(f"Final filter applied to combined MongoDB transactions. Transactions after final filter: {len(transactions_df)}")
+
                     if not transactions_df.empty:
                         transactions_df = transactions_df.drop_duplicates().sort_values('date' if 'date' in transactions_df.columns else transactions_df.columns[0])
                         data_info = {
                             'source': 'Database',
                             'documents_found': len(documents),
                             'transactions_loaded': len(transactions_df),
-                            'date_range': f"{start_date} to {end_date}",
+                            'date_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
                             'columns': transactions_df.columns.tolist()
                         }
                         debug_write(f"transactions_df shape: {transactions_df.shape}")
                     else:
-                        st.warning(f"No transactions found in database for date range {start_date} to {end_date}")
+                        st.warning(f"No transactions found in database for date range {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                         st.info("Try uploading a bank statement in the 'Upload & Process' tab.")
             except Exception as e:
                 st.error(f"Error querying database: {str(e)}")
+                debug_write(f"Error querying database: {str(e)}")
                 st.info("Falling back to local file if available...")
                 data_source = "Local File"
         
         if data_source == "Local File" or (data_source == "Database Query" and transactions_df.empty):
             try:
+                debug_write(f"Attempting to load data from local file for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                 with st.spinner("Loading data from local file..."):
                     transactions_df = processor.load_latest_bank_statement()
                     statement_info = processor.get_statement_info()
                     debug_write(f"Statement info: {statement_info}")
                     
                     if not transactions_df.empty and statement_info:
-                        # Standardize column names
+                        # Standardize column names (replicate _standardize_columns logic from ml_integration)
                         column_mapping = {
-                            'Date': 'date',
-                            'Transaction Date': 'date',
-                            'Trans Date': 'date',
-                            'Description': 'description',
-                            'Details': 'description',
-                            'Trans Details': 'description',
-                            'Debit': 'debits',
-                            'Debits': 'debits',
-                            'Credit': 'credits',
-                            'Credits': 'credits',
-                            'Balance': 'balance',
-                            'Running Balance': 'balance',
-                            'Saldo': 'balance'
+                            'Date': 'date', 'Transaction Date': 'date', 'Trans Date': 'date',
+                            'Description': 'description', 'Details': 'description', 'Trans Details': 'description',
+                            'Narrative Description': 'description',
+                            'Debit': 'debits', 'Debits': 'debits', 'Debits (R)': 'debits', 'Fees (R) Debits (R)': 'debits',
+                            'Credit': 'credits', 'Credits': 'credits', 'Credits (R)': 'credits',
+                            'Balance': 'balance', 'Balance (R)': 'balance', 'Running Balance': 'balance', 'Saldo': 'balance',
+                            'Category': 'category', 'category': 'category' # Ensure category is mapped
                         }
-                        transactions_df = transactions_df.rename(columns=column_mapping)
+                        transactions_df = transactions_df.rename(columns={k: v for k, v in column_mapping.items() if k in transactions_df.columns})
                         
-                        # Ensure required columns
-                        required_columns = ['date', 'description', 'debits', 'credits', 'balance']
+                        required_columns = ['date', 'description', 'debits', 'credits', 'balance', 'category']
                         for col in required_columns:
                             if col not in transactions_df.columns:
-                                transactions_df[col] = 'Unknown' if col == 'description' else 0.0
+                                transactions_df[col] = 'Unknown' if col in ['description', 'category'] else 0.0
                         
-                        # Check date range overlap
-                        period = statement_info.get('period', {})
-                        if period.get('start') and period.get('end'):
-                            file_start = pd.to_datetime(period['start'])
-                            file_end = pd.to_datetime(period['end'])
-                            selected_start = pd.to_datetime(start_date)
-                            selected_end = pd.to_datetime(end_date)
+                        # Ensure 'date' column is datetime and drop NaT
+                        if 'date' in transactions_df.columns:
+                            transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
+                            transactions_df.dropna(subset=['date'], inplace=True)
+                            debug_write(f"Local file date column min/max: {transactions_df['date'].min()} / {transactions_df['date'].max()}")
+                            debug_write(f"Filtering local file for range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                             
-                            if file_end < selected_start or file_start > selected_end:
-                                st.warning(f"⚠️ Local file covers {period['start']} to {period['end']}, but you selected {start_date} to {end_date}. There may be no overlapping data.")
+                            original_count = len(transactions_df)
+                            transactions_df = transactions_df[
+                                (transactions_df['date'] >= pd.to_datetime(start_date)) &
+                                (transactions_df['date'] <= pd.to_datetime(end_date))
+                            ]
+                            filtered_count = len(transactions_df)
+                            debug_write(f"Local file data has {filtered_count} rows after date filtering (from {original_count} total).")
                             
-                            # Filter to selected date range
-                            if 'date' in transactions_df.columns:
-                                transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce')
-                                original_count = len(transactions_df)
-                                transactions_df = transactions_df[
-                                    (transactions_df['date'] >= selected_start) &
-                                    (transactions_df['date'] <= selected_end)
-                                ]
-                                filtered_count = len(transactions_df)
-                                
-                                if filtered_count == 0:
-                                    st.warning(f"No transactions found in local file for your selected date range ({start_date} to {end_date})")
-                                elif filtered_count < original_count:
-                                    st.info(f"Filtered to {filtered_count} transactions (from {original_count} total) matching your date range")
+                            if filtered_count == 0:
+                                st.warning(f"No transactions found in local file for your selected date range ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})")
+                            elif filtered_count < original_count:
+                                st.info(f"Filtered to {filtered_count} transactions (from {original_count} total) matching your date range")
+                        else:
+                            debug_write("Local file data has no 'date' column. Using all rows.")
+                            st.warning("Local file data has no 'date' column. Cannot filter by date range.")
                         
                         data_info = {
                             'source': 'Local File',
                             'filename': statement_info.get('filename', 'Unknown'),
-                            'file_period': f"{period.get('start', 'Unknown')} to {period.get('end', 'Unknown')}",
+                            'file_period': f"{statement_info.get('period', {}).get('start', 'Unknown')} to {statement_info.get('period', {}).get('end', 'Unknown')}",
                             'transactions_loaded': len(transactions_df),
-                            'selected_range': f"{start_date} to {end_date}",
+                            'selected_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
                             'columns': transactions_df.columns.tolist()
                         }
                         debug_write(f"transactions_df shape: {transactions_df.shape}")
-                    
+                    else:
+                        debug_write("Local file is empty or statement info is missing.")
+                        st.warning("No local file transactions found or statement info is missing.")
             except Exception as e:
                 st.error(f"Error loading local file: {str(e)}")
+                debug_write(f"Error loading local file: {str(e)}")
     
     # Display data info
     if data_info:
