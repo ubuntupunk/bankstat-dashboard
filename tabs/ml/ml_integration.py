@@ -51,23 +51,9 @@ class MLCategoryIntegration:
             
             # Load transactions with chunking and fallback
             transactions_df, data_info = self._load_transactions(processor, start_date, end_date, data_source)
-            if transactions_df is None or transactions_df.empty:
-                logger.warning(f"No transaction data available. Source: {data_source}, Info: {data_info}")
-                if data_info.get('source') == 'Database' and data_info.get('documents_found', 0) == 0:
-                    st.error(f"❌ No transactions found in MongoDB for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. Please upload a bank statement or adjust the date range.")
-                elif data_info.get('source') == 'Local File' and data_info.get('filename'):
-                    st.error(f"❌ No valid transactions in local file '{data_info.get('filename')}' for the selected date range. Please upload a new bank statement.")
-                else:
-                    st.error("❌ No transaction data available. Please set date range or upload a bank statement in the 'Upload & Process' tab.")
-                return
             
-            # Display data info
-            with st.expander("📋 Data Source Information", expanded=False):
-                for key, value in data_info.items():
-                    st.write(f"**{key.replace('_', ' ').title()}:** {value}")
-            
-            # Render UI components
-            render_ml_tab_ui(self.ml_processor, processor, transactions_df, self.db, self.db_connection)
+            # Render UI components, passing potentially empty transactions_df and data_info
+            render_ml_tab_ui(self.ml_processor, processor, transactions_df, self.db, self.db_connection, data_info, start_date, end_date)
             
         except Exception as e:
             logger.error(f"Error in render_ml_tab: {e}", exc_info=True)

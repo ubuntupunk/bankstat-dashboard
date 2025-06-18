@@ -24,6 +24,8 @@ config = Config()
 DATABASE_URL = config.supabase_direct_url
 
 # Create SQLAlchemy engine with connection pooling disabled for Supabase
+from utils.utils import debug_write
+debug_write("Attempting to create SQLAlchemy engine.")
 try:
     engine = create_engine(
         DATABASE_URL,
@@ -38,8 +40,10 @@ try:
         }
     )
     logger.info("Successfully connected to the database")
+    debug_write("Successfully created SQLAlchemy engine.")
 except Exception as e:
     logger.error(f"Error creating database engine: {e}")
+    debug_write(f"Error creating database engine: {e}")
     raise
 
 # Create a configured "Session" class
@@ -52,17 +56,23 @@ from contextlib import contextmanager
 
 def get_db():
     """Dependency to get DB session"""
+    debug_write("Attempting to get DB session (get_db).")
     db = SessionLocal()
     try:
+        debug_write("DB session obtained (get_db).")
         yield db
     finally:
         db.close()
+        debug_write("DB session closed (get_db).")
 
 @contextmanager
 def get_db_session():
     """Context manager to get DB session"""
+    debug_write("Attempting to get DB session (get_db_session context manager).")
     db = SessionLocal()
     try:
+        debug_write("DB session obtained (get_db_session context manager).")
         yield db
     finally:
         db.close()
+        debug_write("DB session closed (get_db_session context manager).")

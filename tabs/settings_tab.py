@@ -4,6 +4,7 @@ from db.model import Category
 from db.db import get_db_session
 from sqlalchemy.orm import Session
 from typing import List
+from utils.utils import debug_write
 
 def _get_all_categories(db: Session) -> List[Category]:
     """Fetches all categories from the database."""
@@ -22,10 +23,12 @@ def _add_category_to_db(db: Session, category_name: str, category_type: str = No
     return new_category
 
 def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
+    debug_write("Entering render_settings_tab")
     st.header("⚙️ Settings")
 
     # Show current statement info
     st.subheader("📋 Current Statement")
+    debug_write("Checking statement info")
     statement_info = processor.get_statement_info()
     if statement_info:
         col1, col2 = st.columns(2)
@@ -40,12 +43,21 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
     else:
         st.info("No bank statement currently loaded")
 
+    debug_write("Starting category management section")
     # Category management
     st.subheader("🏷️ Category Management")
 
     with get_db_session() as db:
-        existing_categories_objs = _get_all_categories(db)
-        existing_category_names = [cat.name for cat in existing_categories_objs]
+        debug_write("Database session opened for categories")
+        try:
+            existing_categories_objs = _get_all_categories(db)
+            debug_write(f"Fetched {len(existing_categories_objs)} existing categories.")
+            existing_category_names = [cat.name for cat in existing_categories_objs]
+            debug_write(f"Existing category names: {existing_category_names}")
+        except Exception as e:
+            debug_write(f"Error fetching categories: {e}")
+            st.error(f"Error loading categories: {e}")
+            existing_category_names = [] # Ensure it's an empty list to avoid further errors
         
         st.write("### Existing Categories")
         if existing_category_names:
@@ -67,9 +79,11 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
 
         if st.button("➕ Add Category Mapping"):
             if new_term and new_category_name:
+                debug_write(f"Attempting to add mapping for term '{new_term}' and category '{new_category_name}'")
                 try:
                     # Add category to DB if it doesn't exist
                     _add_category_to_db(db, new_category_name, category_type)
+                    debug_write("Category added to DB (or already exists)")
                     
                     # Add mapping to analyzer (which might store it in a config or DB)
                     success = analyzer.add_category_mapping(new_term, new_category_name, category_type)
@@ -78,11 +92,14 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
                         st.rerun() # Rerun to update category list
                     else:
                         st.error("Failed to add category mapping")
+                    debug_write("Category mapping attempt finished")
                 except Exception as e:
                     st.error(f"Error adding mapping: {str(e)}")
+                    debug_write(f"Error during mapping: {str(e)}")
             else:
                 st.error("Please fill in both term and category name")
 
+    debug_write("Starting API Configuration section")
     # API Configuration
     st.subheader("🔑 API Configuration")
     current_api_key = st.text_input(
@@ -93,9 +110,11 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
     )
 
     if st.button("💾 Save API Key"):
+        debug_write("Save API Key button clicked")
         # In a real app, you'd save this securely
         st.success("✅ API key updated")
 
+    debug_write("Starting Database Connection Test section")
     # Database Connection Test
     st.subheader("🛢️ Database Connection")
     if st.button("🔍 Test Database Connection"):
@@ -105,7 +124,9 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
         else:
             st.error(f"❌ {message}")
 
+    debug_write("Starting System Information section")
     # System Information
     st.subheader("ℹ️ System Information")
     st.info(f"**Current Directory:** {os.getcwd()}")
     st.info(f"**Environment Variables:** {len(os.environ)} loaded")
+    debug_write("Exiting render_settings_tab")

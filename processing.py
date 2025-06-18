@@ -6,6 +6,7 @@ from datetime import datetime
 from io import StringIO
 import logging
 import re
+from typing import Optional
 
 class StreamlitAnalytics:
     """Handles bank statement processing and data extraction"""
@@ -18,39 +19,42 @@ class StreamlitAnalytics:
     def load_latest_bank_statement(_self):
         """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
         try:
-            if os.path.exists(_self.json_file_path):
-                with open(_self.json_file_path, "r") as f:
-                    json_data = json.load(f)
-                
-                df = _self._extract_tables_to_dataframe(json_data)
-                if not df.empty:
-                    # Ensure 'date' column is datetime and handle missing columns
-                    if 'date' in df.columns:
-                        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                    
-                    # Fill NaN in 'debits' and 'credits' with 0
-                    if 'debits' not in df.columns:
-                        df['debits'] = 0.0
-                    else:
-                        df['debits'] = pd.to_numeric(df['debits'], errors='coerce').fillna(0.0)
-                    
-                    if 'credits' not in df.columns:
-                        df['credits'] = 0.0
-                    else:
-                        df['credits'] = pd.to_numeric(df['credits'], errors='coerce').fillna(0.0)
-                    
-                    # Add description if missing
-                    if 'description' not in df.columns:
-                        df['description'] = 'Unknown'
-                    
-                    # Add category column if it doesn't exist
-                    if 'category' not in df.columns:
-                        df['category'] = 'Uncategorized'
-                    
-                    logging.debug(f"Loaded DataFrame columns: {df.columns.tolist()}")
-                    return df
+            if not os.path.exists(_self.json_file_path):
+                logging.warning("No bank statement JSON file found")
+                return pd.DataFrame()
             
-            logging.warning("No bank statement JSON file found")
+            with open(_self.json_file_path, "r") as f:
+                json_data = json.load(f)
+            
+            df = _self._extract_tables_to_dataframe(json_data)
+            if not df.empty:
+                # Ensure 'date' column is datetime and handle missing columns
+                if 'date' in df.columns:
+                    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                
+                # Fill NaN in 'debits' and 'credits' with 0
+                if 'debits' not in df.columns:
+                    df['debits'] = 0.0
+                else:
+                    df['debits'] = pd.to_numeric(df['debits'], errors='coerce').fillna(0.0)
+                
+                if 'credits' not in df.columns:
+                    df['credits'] = 0.0
+                else:
+                    df['credits'] = pd.to_numeric(df['credits'], errors='coerce').fillna(0.0)
+                
+                # Add description if missing
+                if 'description' not in df.columns:
+                    df['description'] = 'Unknown'
+                
+                # Add category column if it doesn't exist
+                if 'category' not in df.columns:
+                    df['category'] = 'Uncategorized'
+                
+                logging.debug(f"Loaded DataFrame columns: {df.columns.tolist()}")
+                return df
+            
+            logging.warning("No bank statement JSON file found or no tables extracted.")
             return pd.DataFrame()
         
         except Exception as e:

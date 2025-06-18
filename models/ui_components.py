@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import logging
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Dict, Any
 from models.ml_processor import MLProcessor
 from db.category_db import CategoryDB
 
@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def render_ml_tab_ui(ml_processor: MLProcessor, processor, transactions_df: pd.DataFrame, db: CategoryDB, db_connection):
+def render_ml_tab_ui(ml_processor: MLProcessor, processor, transactions_df: pd.DataFrame, db: CategoryDB, db_connection, data_info: Dict[str, Any], start_date: datetime, end_date: datetime):
     """Render the ML categorization tab UI components."""
     try:
         st.markdown("""
@@ -40,16 +40,29 @@ def render_ml_tab_ui(ml_processor: MLProcessor, processor, transactions_df: pd.D
             data_source = st.selectbox(
                 "Data Source:",
                 data_source_options,
+                index=data_source_options.index(data_info.get('source', 'Auto')) if data_info.get('source') in data_source_options else 0,
                 help="Choose data source for transactions"
             )
             
             # Date range selection
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=90)
-            start_date = st.date_input("Start Date", start_date)
-            end_date = st.date_input("End Date", end_date)
+            st.date_input("Start Date", start_date, key="ml_start_date")
+            st.date_input("End Date", end_date, key="ml_end_date")
         
         with col1:
+            if transactions_df is None or transactions_df.empty:
+                st.error("❌ No transaction data available for the selected date range. Please upload a bank statement or adjust the date range.")
+                if data_info:
+                    with st.expander("📋 Data Source Information", expanded=False):
+                        for key, value in data_info.items():
+                            st.write(f"**{key.replace('_', ' ').title()}:** {value}")
+                return
+            
+            # Display data info
+            if data_info:
+                with st.expander("📋 Data Source Information", expanded=False):
+                    for key, value in data_info.items():
+                        st.write(f"**{key.replace('_', ' ').title()}:** {value}")
+            
             # Model status
             model_info = ml_processor.get_model_info()
             col1a, col1b, col1c = st.columns(3)
