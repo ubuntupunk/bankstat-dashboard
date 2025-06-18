@@ -2,25 +2,23 @@ import streamlit as st
 import os
 from db.model import Category
 from db.db import get_db_session
+from db.category_db import CategoryDB # Import the new CategoryDB
 from sqlalchemy.orm import Session
 from typing import List
 from utils.utils import debug_write
 
-def _get_all_categories(db: Session) -> List[Category]:
-    """Fetches all categories from the database."""
-    return db.query(Category).order_by(Category.name).all()
+# Instantiate CategoryDB globally or pass it around if needed
+category_db_instance = CategoryDB()
 
-def _add_category_to_db(db: Session, category_name: str, category_type: str = None) -> Category:
-    """Adds a new category to the database if it doesn't exist."""
-    existing_category = db.query(Category).filter(Category.name == category_name).first()
-    if existing_category:
-        return existing_category
-    
-    new_category = Category(name=category_name, type=category_type)
-    db.add(new_category)
-    db.commit()
-    db.refresh(new_category)
-    return new_category
+def _get_all_categories() -> List[dict]:
+    """Fetches all categories using CategoryDB."""
+    debug_write("Calling CategoryDB.get_all_categories()")
+    return category_db_instance.get_all_categories()
+
+def _add_category_to_db(category_name: str, category_type: str = None) -> dict:
+    """Adds a new category using CategoryDB."""
+    debug_write(f"Calling CategoryDB.add_category with name={category_name}, type={category_type}")
+    return category_db_instance.add_category(category_name, category_type)
 
 def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
     debug_write("Entering render_settings_tab")
@@ -47,23 +45,23 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
     # Category management
     st.subheader("🏷️ Category Management")
 
-    with get_db_session() as db:
-        debug_write("Database session opened for categories")
-        try:
-            existing_categories_objs = _get_all_categories(db)
-            debug_write(f"Fetched {len(existing_categories_objs)} existing categories.")
-            existing_category_names = [cat.name for cat in existing_categories_objs]
-            debug_write(f"Existing category names: {existing_category_names}")
-        except Exception as e:
-            debug_write(f"Error fetching categories: {e}")
-            st.error(f"Error loading categories: {e}")
-            existing_category_names = [] # Ensure it's an empty list to avoid further errors
-        
-        st.write("### Existing Categories")
-        if existing_category_names:
-            st.write(", ".join(existing_category_names))
-        else:
-            st.info("No categories defined yet.")
+    # No longer need get_db_session here as CategoryDB handles its own connection
+    debug_write("Fetching existing categories without explicit db session in settings_tab.")
+    try:
+        existing_categories_objs = _get_all_categories() # Call without db session
+        debug_write(f"Fetched {len(existing_categories_objs)} existing categories.")
+        existing_category_names = [cat['name'] for cat in existing_categories_objs] # Access 'name' key
+        debug_write(f"Existing category names: {existing_category_names}")
+    except Exception as e:
+        debug_write(f"Error fetching categories: {e}")
+        st.error(f"Error loading categories: {e}")
+        existing_category_names = [] # Ensure it's an empty list to avoid further errors
+    
+    st.write("### Existing Categories")
+    if existing_category_names:
+        st.write(", ".join(existing_category_names))
+    else:
+        st.info("No categories defined yet.")
 
         st.write("### Add New Category Mapping")
         col1, col2 = st.columns(2)
@@ -81,18 +79,22 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
             if new_term and new_category_name:
                 debug_write(f"Attempting to add mapping for term '{new_term}' and category '{new_category_name}'")
                 try:
-                    # Add category to DB if it doesn't exist
-                    _add_category_to_db(db, new_category_name, category_type)
-                    debug_write("Category added to DB (or already exists)")
-                    
-                    # Add mapping to analyzer (which might store it in a config or DB)
-                    success = analyzer.add_category_mapping(new_term, new_category_name, category_type)
-                    if success:
-                        st.success(f"✅ Added mapping: '{new_term}' → '{new_category_name}' ({category_type})")
-                        st.rerun() # Rerun to update category list
+                    # Add category to DB if it doesn't exist using CategoryDB
+                    added_category = _add_category_to_db(new_category_name, category_type) # Call without db session
+                    if added_category:
+                        debug_write("Category added to DB (or already exists)")
+                        
+                        # Add mapping to analyzer (which might store it in a config or DB)
+                        success = analyzer.add_category_mapping(new_term, new_category_name, category_type)
+                        if success:
+                            st.success(f"✅ Added mapping: '{new_term}' → '{new_category_name}' ({category_type})")
+                            st.rerun() # Rerun to update category list
+                        else:
+                            st.error("Failed to add category mapping")
+                        debug_write("Category mapping attempt finished")
                     else:
-                        st.error("Failed to add category mapping")
-                    debug_write("Category mapping attempt finished")
+                        st.error("Failed to add category to database.")
+                        debug_write("Failed to add category to database via CategoryDB.")
                 except Exception as e:
                     st.error(f"Error adding mapping: {str(e)}")
                     debug_write(f"Error during mapping: {str(e)}")
