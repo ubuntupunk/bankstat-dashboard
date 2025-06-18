@@ -16,21 +16,21 @@ class StreamlitAnalytics:
         logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
     
     @st.cache_data(ttl=3600) # Cache for 1 hour
-    def load_latest_bank_statement(_self, json_data: Optional[Dict] = None):
+    def load_latest_bank_statement(_self, _json_data: Optional[Dict] = None): # Added underscore to json_data
         """
         Load the latest processed bank statement JSON from storage or provided data
         and convert to DataFrame.
         """
         try:
-            if json_data is None:
+            if _json_data is None:
                 if not os.path.exists(_self.json_file_path):
                     logging.warning("No bank statement JSON file found")
                     return pd.DataFrame()
                 
                 with open(_self.json_file_path, "r") as f:
-                    json_data = json.load(f)
+                    _json_data = json.load(f)
             
-            df = _self._extract_tables_to_dataframe(json_data)
+            df = _self._extract_tables_to_dataframe(_json_data)
             if not df.empty:
                 # Ensure 'date' column is datetime and handle missing columns
                 if 'date' in df.columns:
@@ -71,7 +71,7 @@ class StreamlitAnalytics:
         Process the latest JSON bank statement (from file or provided data)
         and return a standardized DataFrame.
         """
-        return self.load_latest_bank_statement(json_data)
+        return self.load_latest_bank_statement(_json_data=json_data) # Pass with underscore
     
     def _extract_tables_to_dataframe(self, json_data: Dict):
         """Extract tables from JSON data and convert to DataFrame"""
