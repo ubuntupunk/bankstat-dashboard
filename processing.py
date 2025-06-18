@@ -6,7 +6,7 @@ from datetime import datetime
 from io import StringIO
 import logging
 import re
-from typing import Optional
+from typing import Optional, Dict
 
 class StreamlitAnalytics:
     """Handles bank statement processing and data extraction"""

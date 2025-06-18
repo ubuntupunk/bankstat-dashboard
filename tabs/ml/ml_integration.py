@@ -78,11 +78,12 @@ class MLCategoryIntegration:
         # Auto-select data source
         if data_source == "Auto":
             data_source = "Database Query" if db_available else "Local File" if local_available else "No Data"
+        logger.debug(f"Selected data source: {data_source}")
         
         # Load from MongoDB
         if data_source == "Database Query" and db_available:
             try:
-                logger.debug(f"Querying MongoDB for {start_date} to {end_date}")
+                logger.debug(f"Querying MongoDB for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                 with st.spinner("Loading data from MongoDB..."):
                     # MongoDB query for documents within the date range
                     # Documents store 'period.start' and 'period.end' as strings in 'YYYY-MM-DD' format
@@ -101,47 +102,46 @@ class MLCategoryIntegration:
                     
                     if documents:
                         for doc in documents:
-                            logger.debug(f"Processing MongoDB document: {doc.get('filename', 'N/A')}")
-                            # Assuming 'doc' contains the raw JSON structure of a bank statement
-                            # We need to pass the actual document content to processor for extraction
-                            # This might require a change in processor.process_latest_json or a new method
-                            # For now, let's assume processor can take a dict or has a way to load from a specific doc
-                            # If processor.process_latest_json() always reads from 'latest_bank_statement.json',
-                            # then we need to save the current doc to that file temporarily or refactor processor.
-                            
-                            # For demonstration, let's assume processor can take the document directly
-                            # This is a placeholder and might need actual implementation in processing.py
-                            # For now, we'll simulate by loading the latest_bank_statement.json if it exists
-                            # and then filtering it by the document's period if available.
-                            
-                            # A more robust solution would involve passing the 'doc' content to processor
-                            # or having processor fetch specific documents by ID.
-                            
-                            # Pass the document content directly to processor.process_latest_json
-                            # This assumes the document structure is compatible with what process_latest_json expects
-                            # (i.e., it contains 'elements' with 'table' categories and 'content.html')
+                            logger.debug(f"Processing MongoDB document: {doc.get('filename', 'N/A')}. Document keys: {list(doc.keys())}")
                             df = processor.process_latest_json(json_data=doc)
+                            logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' processed by processor. Initial rows: {len(df)}")
                             
                             if not df.empty:
                                 df = self._standardize_columns(df)
                                 if 'date' in df.columns:
-                                    df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                                    # Filter by the overall selected range, as the MongoDB query already handled document periods
-                                    df = df[
-                                        (df['date'] >= pd.to_datetime(start_date)) &
-                                        (df['date'] <= pd.to_datetime(end_date))
-                                    ]
-                                if not df.empty:
-                                    transactions_df = pd.concat([transactions_df, df], ignore_index=True)
-                                    logger.debug(f"Added {len(df)} transactions from document to total.")
+                                    logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' date column dtype: {df['date'].dtype}")
+                                    if pd.api.types.is_datetime64_any_dtype(df['date']):
+                                        logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' date range: {df['date'].min()} to {df['date'].max()}")
+                                        df_filtered = df[
+                                            (df['date'] >= pd.to_datetime(start_date)) &
+                                            (df['date'] <= pd.to_datetime(end_date))
+                                        ]
+                                        logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' rows after date filter: {len(df_filtered)}")
+                                    else:
+                                        df_filtered = df # Cannot filter if date is not datetime, use as is
+                                        logger.warning(f"MongoDB doc '{doc.get('filename', 'N/A')}' 'date' column is not datetime. Skipping date filter for this doc.")
+                                else:
+                                    df_filtered = df # No date column to filter, use as is
+                                    logger.warning(f"MongoDB doc '{doc.get('filename', 'N/A')}' has no 'date' column. Using all {len(df_filtered)} rows.")
+
+                                if not df_filtered.empty:
+                                    transactions_df = pd.concat([transactions_df, df_filtered], ignore_index=True)
+                                    logger.debug(f"Added {len(df_filtered)} transactions from MongoDB doc to total. Current total: {len(transactions_df)}")
+                                else:
+                                    logger.debug(f"No transactions from MongoDB doc '{doc.get('filename', 'N/A')}' after date filtering or date column issues.")
+                            else:
+                                logger.debug(f"Processor returned empty DataFrame for MongoDB document '{doc.get('filename', 'N/A')}'.")
                     
                     # After processing all documents, apply the overall date range filter one last time
+                    # This is crucial to ensure all transactions fall within the selected range,
+                    # especially if documents without 'period' were included.
                     if not transactions_df.empty:
+                        transactions_df['date'] = pd.to_datetime(transactions_df['date'], errors='coerce') # Ensure date is datetime before final filter
                         transactions_df = transactions_df[
                             (transactions_df['date'] >= pd.to_datetime(start_date)) &
                             (transactions_df['date'] <= pd.to_datetime(end_date))
                         ]
-                        logger.debug(f"Final filter applied. Transactions after filter: {len(transactions_df)}")
+                        logger.debug(f"Final filter applied to combined MongoDB transactions. Transactions after final filter: {len(transactions_df)}")
                     
                     if not transactions_df.empty:
                         transactions_df = transactions_df.drop_duplicates().sort_values('date')
@@ -154,11 +154,12 @@ class MLCategoryIntegration:
                         }
                         logger.info(f"Loaded {len(transactions_df)} transactions from MongoDB. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
                     else:
-                        logger.warning(f"No MongoDB transactions for {start_date} to {end_date}")
+                        logger.warning(f"No MongoDB transactions for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                         if local_available:
                             data_source = "Local File"
             except Exception as e:
                 logger.error(f"MongoDB query failed: {e}", exc_info=True)
+                data_info['error'] = str(e)
                 if local_available:
                     logger.info("Falling back to local file")
                     data_source = "Local File"
@@ -166,23 +167,32 @@ class MLCategoryIntegration:
         # Load from Local File
         if (data_source == "Local File" and local_available) or (data_source == "Database Query" and transactions_df.empty and local_available):
             try:
+                logger.debug(f"Loading data from local file for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                 with st.spinner("Loading data from local file..."):
-                    # No chunking parameter for load_latest_bank_statement when loading from file
                     temp_df = processor.load_latest_bank_statement() 
+                    logger.debug(f"Local file loaded. Initial rows: {len(temp_df)}")
                     
                     if not temp_df.empty:
                         temp_df = self._standardize_columns(temp_df)
                         if 'date' in temp_df.columns:
-                            temp_df['date'] = pd.to_datetime(temp_df['date'], errors='coerce')
+                            temp_df['date'] = pd.to_datetime(temp_df['date'], errors='coerce') # Ensure date is datetime
+                            logger.debug(f"Local file date column min/max: {temp_df['date'].min()} / {temp_df['date'].max()}")
+                            logger.debug(f"Filtering local file for range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                             temp_df = temp_df[
                                 (temp_df['date'] >= pd.to_datetime(start_date)) &
                                 (temp_df['date'] <= pd.to_datetime(end_date))
                             ]
+                            logger.debug(f"Local file data has {len(temp_df)} rows after date filtering.")
+                        else:
+                            logger.warning("Local file data has no 'date' column. Using all rows.")
+
                         transactions_df = pd.concat([transactions_df, temp_df], ignore_index=True)
-                        logger.debug(f"Processed {len(temp_df)} rows from local file. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                        logger.debug(f"Added {len(temp_df)} rows from local file to total. Current total: {len(transactions_df)}")
+                    else:
+                        logger.debug("Processor returned empty DataFrame for local file.")
                     
-                    if chunks:
-                        transactions_df = pd.concat(chunks, ignore_index=True).drop_duplicates().sort_values('date')
+                    if not transactions_df.empty: # Check if transactions_df has data after processing temp_df
+                        transactions_df = transactions_df.drop_duplicates().sort_values('date')
                         statement_info = processor.get_statement_info()
                         data_info = {
                             'source': 'Local File',
@@ -193,6 +203,11 @@ class MLCategoryIntegration:
                             'columns': transactions_df.columns.tolist()
                         }
                         logger.info(f"Loaded {len(transactions_df)} transactions from local file. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                    else:
+                        logger.warning(f"No local file transactions for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+            except Exception as e:
+                logger.error(f"Local file loading failed: {e}", exc_info=True)
+                data_info['error'] = str(e)
             except Exception as e:
                 logger.error(f"Local file loading failed: {e}", exc_info=True)
                 data_info['error'] = str(e)
@@ -230,5 +245,11 @@ class MLCategoryIntegration:
         for col in required_columns:
             if col not in df.columns:
                 df[col] = 'Unknown' if col in ['description', 'category_name'] else 0.0
+        
+        # Ensure 'date' column is datetime after standardization
+        if 'date' in df.columns:
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            # Drop rows where date conversion failed
+            df.dropna(subset=['date'], inplace=True)
         
         return df
