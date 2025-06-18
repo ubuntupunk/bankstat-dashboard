@@ -113,8 +113,16 @@ def render_settings_tab(processor, pdf_processor, analyzer, db_connection):
 
     if st.button("💾 Save API Key"):
         debug_write("Save API Key button clicked")
-        # In a real app, you'd save this securely
-        st.success("✅ API key updated")
+        try:
+            # Update the API key in the pdf_processor instance
+            pdf_processor.api_key = current_api_key
+            # In a real application, you would persist this key securely.
+            # For this example, we'll just confirm it's updated in the current session.
+            st.success("✅ API key updated in current session.")
+            debug_write("Upstage API key updated in pdf_processor.")
+        except Exception as e:
+            st.error(f"Error saving API key: {str(e)}")
+            debug_write(f"Error saving API key: {str(e)}")
 
     debug_write("Starting Database Connection Test section")
     # Database Connection Test
