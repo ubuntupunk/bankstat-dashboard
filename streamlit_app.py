@@ -27,17 +27,6 @@ try:
 except FileNotFoundError:
     st.warning("styles.css not found. Some styling may be missing.")
 
-# Initialize configuration
-config = Config()
-
-# # Validate configuration and handle missing secrets
-# try:
-#     config.validate_config()
-#     secrets_ok = True
-# except ValueError as e:
-#     st.error(f"⚠️ Configuration Error: {e}")
-#     secrets_ok = False
-
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -125,6 +114,17 @@ def render_welcome_page():
 
 # Main app logic
 def main():
+    # Initialize configuration
+    config = Config()
+
+    # Validate configuration and handle missing secrets
+    try:
+        config.validate_config()
+        secrets_ok = True
+    except ValueError as e:
+        st.error(f"⚠️ Configuration Error: {e}")
+        secrets_ok = False
+
     if DEBUG_MODE:
         st.sidebar.info("Debug mode is ON.")
     
