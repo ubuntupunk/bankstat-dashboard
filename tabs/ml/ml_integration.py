@@ -8,6 +8,7 @@ from db.category_db import CategoryDB
 from models.ui_components import render_ml_tab_ui
 from models.ml_processor import MLProcessor
 from models.transaction_categorizer import TransactionCategorizer
+from utils.utils import debug_write # Import custom debug_write
 
 # Configure logging with detailed format
 logging.basicConfig(
@@ -31,21 +32,21 @@ class MLCategoryIntegration:
         """Initialize categorizer and processor with memory monitoring."""
         process = psutil.Process()
         try:
-            logger.debug("Initializing TransactionCategorizer")
+            debug_write("Initializing TransactionCategorizer")
             self.categorizer = TransactionCategorizer(use_tensorflow=False)  # Disable TensorFlow for stability
             self.ml_processor = MLProcessor(self.categorizer)
-            logger.info(f"Components initialized. Memory usage: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+            debug_write(f"Components initialized. Memory usage: {process.memory_info().rss / 1024 / 1024:.2f} MB")
         except Exception as e:
-            logger.error(f"Initialization failed: {e}", exc_info=True)
+            debug_write(f"Initialization failed: {e}")
             self.categorizer = None
             self.ml_processor = None
     
     def render_ml_tab(self, processor, start_date: datetime, end_date: datetime, data_source: str = "Auto"):
         """Render the ML categorization tab with uniform data loading."""
-        logger.debug("Starting render_ml_tab")
+        debug_write("Starting render_ml_tab")
         try:
             if self.categorizer is None or self.ml_processor is None:
-                logger.error("Categorizer or processor not initialized")
+                debug_write("Categorizer or processor not initialized")
                 st.error("❌ ML Categorizer failed to initialize. Please check the logs.")
                 return
             
@@ -56,7 +57,7 @@ class MLCategoryIntegration:
             render_ml_tab_ui(self.ml_processor, processor, transactions_df, self.db, self.db_connection, data_info, start_date, end_date)
             
         except Exception as e:
-            logger.error(f"Error in render_ml_tab: {e}", exc_info=True)
+            debug_write(f"Error in render_ml_tab: {e}")
             st.error(f"Error in ML tab: {e}")
     
     def _load_transactions(self, processor, start_date: datetime, end_date: datetime, data_source: str = "Auto") -> tuple[Optional[pd.DataFrame], Dict[str, Any]]:
@@ -71,19 +72,19 @@ class MLCategoryIntegration:
         try:
             doc_count = self.db_connection.count_documents()
             db_available = doc_count > 0
-            logger.debug(f"Local available: {local_available}, MongoDB documents: {doc_count}")
+            debug_write(f"Local available: {local_available}, MongoDB documents: {doc_count}")
         except Exception as e:
-            logger.error(f"MongoDB check failed: {e}", exc_info=True)
+            debug_write(f"MongoDB check failed: {e}")
         
         # Auto-select data source
         if data_source == "Auto":
             data_source = "Database Query" if db_available else "Local File" if local_available else "No Data"
-        logger.debug(f"Selected data source: {data_source}")
+        debug_write(f"Selected data source: {data_source}")
         
         # Load from MongoDB
         if data_source == "Database Query" and db_available:
             try:
-                logger.debug(f"Querying MongoDB for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                debug_write(f"Querying MongoDB for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                 with st.spinner("Loading data from MongoDB..."):
                     # MongoDB query for documents within the date range
                     # Documents store 'period.start' and 'period.end' as strings in 'YYYY-MM-DD' format
@@ -98,39 +99,39 @@ class MLCategoryIntegration:
                         ]
                     }
                     documents = self.db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
-                    logger.debug(f"Found {len(documents)} MongoDB documents matching date range query.")
+                    debug_write(f"Found {len(documents)} MongoDB documents matching date range query.")
                     
                     if documents:
                         for doc in documents:
-                            logger.debug(f"Processing MongoDB document: {doc.get('filename', 'N/A')}. Document keys: {list(doc.keys())}")
+                            debug_write(f"Processing MongoDB document: {doc.get('filename', 'N/A')}. Document keys: {list(doc.keys())}")
                             df = processor.process_latest_json(json_data=doc)
-                            logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' processed by processor. Initial rows: {len(df)}")
+                            debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' processed by processor. Initial rows: {len(df)}")
                             
                             if not df.empty:
                                 df = self._standardize_columns(df)
                                 if 'date' in df.columns:
-                                    logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' date column dtype: {df['date'].dtype}")
+                                    debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' date column dtype: {df['date'].dtype}")
                                     if pd.api.types.is_datetime64_any_dtype(df['date']):
-                                        logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' date range: {df['date'].min()} to {df['date'].max()}")
+                                        debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' date range: {df['date'].min()} to {df['date'].max()}")
                                         df_filtered = df[
                                             (df['date'] >= pd.to_datetime(start_date)) &
                                             (df['date'] <= pd.to_datetime(end_date))
                                         ]
-                                        logger.debug(f"MongoDB doc '{doc.get('filename', 'N/A')}' rows after date filter: {len(df_filtered)}")
+                                        debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' rows after date filter: {len(df_filtered)}")
                                     else:
                                         df_filtered = df # Cannot filter if date is not datetime, use as is
-                                        logger.warning(f"MongoDB doc '{doc.get('filename', 'N/A')}' 'date' column is not datetime. Skipping date filter for this doc.")
+                                        debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' 'date' column is not datetime. Skipping date filter for this doc.")
                                 else:
                                     df_filtered = df # No date column to filter, use as is
-                                    logger.warning(f"MongoDB doc '{doc.get('filename', 'N/A')}' has no 'date' column. Using all {len(df_filtered)} rows.")
+                                    debug_write(f"MongoDB doc '{doc.get('filename', 'N/A')}' has no 'date' column. Using all {len(df_filtered)} rows.")
 
                                 if not df_filtered.empty:
                                     transactions_df = pd.concat([transactions_df, df_filtered], ignore_index=True)
-                                    logger.debug(f"Added {len(df_filtered)} transactions from MongoDB doc to total. Current total: {len(transactions_df)}")
+                                    debug_write(f"Added {len(df_filtered)} transactions from MongoDB doc to total. Current total: {len(transactions_df)}")
                                 else:
-                                    logger.debug(f"No transactions from MongoDB doc '{doc.get('filename', 'N/A')}' after date filtering or date column issues.")
+                                    debug_write(f"No transactions from MongoDB doc '{doc.get('filename', 'N/A')}' after date filtering or date column issues.")
                             else:
-                                logger.debug(f"Processor returned empty DataFrame for MongoDB document '{doc.get('filename', 'N/A')}'.")
+                                debug_write(f"Processor returned empty DataFrame for MongoDB document '{doc.get('filename', 'N/A')}'.")
                     
                     # After processing all documents, apply the overall date range filter one last time
                     # This is crucial to ensure all transactions fall within the selected range,
@@ -141,7 +142,7 @@ class MLCategoryIntegration:
                             (transactions_df['date'] >= pd.to_datetime(start_date)) &
                             (transactions_df['date'] <= pd.to_datetime(end_date))
                         ]
-                        logger.debug(f"Final filter applied to combined MongoDB transactions. Transactions after final filter: {len(transactions_df)}")
+                        debug_write(f"Final filter applied to combined MongoDB transactions. Transactions after final filter: {len(transactions_df)}")
                     
                     if not transactions_df.empty:
                         transactions_df = transactions_df.drop_duplicates().sort_values('date')
@@ -152,44 +153,44 @@ class MLCategoryIntegration:
                             'date_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
                             'columns': transactions_df.columns.tolist()
                         }
-                        logger.info(f"Loaded {len(transactions_df)} transactions from MongoDB. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                        debug_write(f"Loaded {len(transactions_df)} transactions from MongoDB. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
                     else:
-                        logger.warning(f"No MongoDB transactions for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                        debug_write(f"No MongoDB transactions for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                         if local_available:
                             data_source = "Local File"
             except Exception as e:
-                logger.error(f"MongoDB query failed: {e}", exc_info=True)
+                debug_write(f"MongoDB query failed: {e}")
                 data_info['error'] = str(e)
                 if local_available:
-                    logger.info("Falling back to local file")
+                    debug_write("Falling back to local file")
                     data_source = "Local File"
         
         # Load from Local File
         if (data_source == "Local File" and local_available) or (data_source == "Database Query" and transactions_df.empty and local_available):
             try:
-                logger.debug(f"Loading data from local file for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                debug_write(f"Loading data from local file for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                 with st.spinner("Loading data from local file..."):
                     temp_df = processor.load_latest_bank_statement() 
-                    logger.debug(f"Local file loaded. Initial rows: {len(temp_df)}")
+                    debug_write(f"Local file loaded. Initial rows: {len(temp_df)}")
                     
                     if not temp_df.empty:
                         temp_df = self._standardize_columns(temp_df)
                         if 'date' in temp_df.columns:
                             temp_df['date'] = pd.to_datetime(temp_df['date'], errors='coerce') # Ensure date is datetime
-                            logger.debug(f"Local file date column min/max: {temp_df['date'].min()} / {temp_df['date'].max()}")
-                            logger.debug(f"Filtering local file for range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                            debug_write(f"Local file date column min/max: {temp_df['date'].min()} / {temp_df['date'].max()}")
+                            debug_write(f"Filtering local file for range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
                             temp_df = temp_df[
                                 (temp_df['date'] >= pd.to_datetime(start_date)) &
                                 (temp_df['date'] <= pd.to_datetime(end_date))
                             ]
-                            logger.debug(f"Local file data has {len(temp_df)} rows after date filtering.")
+                            debug_write(f"Local file data has {len(temp_df)} rows after date filtering.")
                         else:
-                            logger.warning("Local file data has no 'date' column. Using all rows.")
+                            debug_write("Local file data has no 'date' column. Using all rows.")
 
                         transactions_df = pd.concat([transactions_df, temp_df], ignore_index=True)
-                        logger.debug(f"Added {len(temp_df)} rows from local file to total. Current total: {len(transactions_df)}")
+                        debug_write(f"Added {len(temp_df)} rows from local file to total. Current total: {len(transactions_df)}")
                     else:
-                        logger.debug("Processor returned empty DataFrame for local file.")
+                        debug_write("Processor returned empty DataFrame for local file.")
                     
                     if not transactions_df.empty: # Check if transactions_df has data after processing temp_df
                         transactions_df = transactions_df.drop_duplicates().sort_values('date')
@@ -202,14 +203,14 @@ class MLCategoryIntegration:
                             'selected_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
                             'columns': transactions_df.columns.tolist()
                         }
-                        logger.info(f"Loaded {len(transactions_df)} transactions from local file. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                        debug_write(f"Loaded {len(transactions_df)} transactions from local file. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
                     else:
-                        logger.warning(f"No local file transactions for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+                        debug_write(f"No local file transactions for {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
             except Exception as e:
-                logger.error(f"Local file loading failed: {e}", exc_info=True)
+                debug_write(f"Local file loading failed: {e}")
                 data_info['error'] = str(e)
             except Exception as e:
-                logger.error(f"Local file loading failed: {e}", exc_info=True)
+                debug_write(f"Local file loading failed: {e}")
                 data_info['error'] = str(e)
         
         # Ensure category_name column
