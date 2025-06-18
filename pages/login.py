@@ -4,7 +4,6 @@ import logging
 from config import Config
 from utils.utils import DEBUG_MODE, debug_write
 
-config = Config()
 logger = logging.getLogger(__name__)
 
 # Set page config - must be first Streamlit command
@@ -23,22 +22,10 @@ except FileNotFoundError:
 
 # Initialize Supabase client
 @st.cache_resource
-def init_supabase_client():
-    url = config.supabase_url
-    key = config.supabase_api_key
+def init_supabase_client(url, key):
     return create_client(url, key)
 
-supabase: Client = init_supabase_client()
-
-# Initialize session state
-if 'auth_mode' not in st.session_state:
-    st.session_state.auth_mode = 'login'  # 'login', 'register', 'reset', 'reset_form'
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'user' not in st.session_state:
-    st.session_state.user = None
-
-def check_auth_callback():
+def check_auth_callback(supabase_client):
     """Handle authentication callbacks (OAuth, password reset, etc.)"""
     debug_write("check_auth_callback called")
     query_params = st.query_params
@@ -67,11 +54,11 @@ def check_auth_callback():
             debug_write("Attempting magic link login...")
             try:
                 with st.spinner("Logging in with magic link..."):
-                    supabase.auth.set_session(
+                    supabase_client.auth.set_session(
                         access_token=access_token,
                         refresh_token=refresh_token
                     )
-                    user_session = supabase.auth.get_session()
+                    user_session = supabase_client.auth.get_session()
                     if user_session and user_session.user:
                         st.session_state.authenticated = True
                         st.session_state.user = {
@@ -111,10 +98,10 @@ def check_auth_callback():
     debug_write("No auth callback handled.")
     return False
 
-def check_existing_session():
+def check_existing_session(supabase_client):
     """Check if user already has a valid session"""
     try:
-        user_session = supabase.auth.get_session()
+        user_session = supabase_client.auth.get_session()
         if user_session and user_session.user:
             st.session_state.authenticated = True
             st.session_state.user = {
@@ -126,7 +113,7 @@ def check_existing_session():
         logger.debug(f"No existing session: {e}")
     return False
 
-def render_login_form():
+def render_login_form(supabase_client):
     """Render the login form"""
     st.subheader("Sign In to Bankstat")
     
@@ -147,7 +134,7 @@ def render_login_form():
             
             try:
                 with st.spinner("Signing in..."):
-                    response = supabase.auth.sign_in_with_password({
+                    response = supabase_client.auth.sign_in_with_password({
                         "email": email,
                         "password": password
                     })
@@ -189,7 +176,7 @@ def render_login_form():
             st.session_state.auth_mode = 'register'
             st.rerun()
 
-def render_register_form():
+def render_register_form(supabase_client):
     """Render the registration form"""
     st.subheader("Create Your Account")
     
@@ -215,7 +202,7 @@ def render_register_form():
             
             try:
                 with st.spinner("Creating account..."):
-                    response = supabase.auth.sign_up({
+                    response = supabase_client.auth.sign_up({
                         "email": email,
                         "password": password
                     })
@@ -253,7 +240,7 @@ def render_register_form():
             st.session_state.auth_mode = 'login'
             st.rerun()
 
-def render_reset_request_form():
+def render_reset_request_form(supabase_client):
     """Render password reset request form"""
     st.subheader("Reset Your Password")
     
@@ -275,7 +262,7 @@ def render_reset_request_form():
             
             try:
                 with st.spinner("Sending reset email..."):
-                    response = supabase.auth.reset_password_for_email(email)
+                    response = supabase_client.auth.reset_password_for_email(email)
                     
                     if response.error:
                         st.error(f"Reset failed: {response.error.message}")
@@ -291,7 +278,7 @@ def render_reset_request_form():
             st.session_state.auth_mode = 'login'
             st.rerun()
 
-def render_reset_password_form():
+def render_reset_password_form(supabase_client):
     """Render new password form after reset link clicked"""
     st.subheader("Set New Password")
     
@@ -327,12 +314,12 @@ def render_reset_password_form():
             try:
                 with st.spinner("Updating password..."):
                     tokens = st.session_state.reset_tokens
-                    supabase.auth.set_session(
+                    supabase_client.auth.set_session(
                         access_token=tokens['access_token'],
                         refresh_token=tokens['refresh_token']
                     )
                     
-                    response = supabase.auth.update_user({"password": new_password})
+                    response = supabase_client.auth.update_user({"password": new_password})
                     
                     if response.user:
                         del st.session_state.reset_tokens
@@ -371,15 +358,29 @@ def render_reset_password_form():
 def main():
     """Main authentication flow"""
     
+    # Initialize configuration
+    config = Config()
+
+    # Initialize Supabase client
+    supabase: Client = init_supabase_client(config.supabase_url, config.supabase_api_key)
+
+    # Initialize session state
+    if 'auth_mode' not in st.session_state:
+        st.session_state.auth_mode = 'login'  # 'login', 'register', 'reset', 'reset_form'
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+
     # Handle callbacks first
-    if check_auth_callback():
+    if check_auth_callback(supabase):
         # If a callback was handled (e.g., password reset link or magic link),
         # and it set auth_mode to 'reset_form' or redirected to dashboard,
         # we should return immediately.
         if st.session_state.auth_mode == 'reset_form':
             st.image("static/bankstatgreen.png", width=300)
             st.title("Bankstat")
-            render_reset_password_form()
+            render_reset_password_form(supabase)
             # Debug info (remove in production)
             if DEBUG_MODE:
                 st.write("Auth Mode:", st.session_state.auth_mode)
@@ -393,7 +394,7 @@ def main():
         return # Important: return here if check_auth_callback handled something and reran/switched page.
     
     # Check existing session
-    if check_existing_session() and st.session_state.authenticated:
+    if check_existing_session(supabase) and st.session_state.authenticated:
         st.switch_page("pages/dashboard.py")
         return
     
@@ -403,13 +404,13 @@ def main():
     
     # Render appropriate form based on auth_mode
     if st.session_state.auth_mode == 'login':
-        render_login_form()
+        render_login_form(supabase)
     elif st.session_state.auth_mode == 'register':
-        render_register_form()
+        render_register_form(supabase)
     elif st.session_state.auth_mode == 'reset':
-        render_reset_request_form()
+        render_reset_request_form(supabase)
     elif st.session_state.auth_mode == 'reset_form':
-        render_reset_password_form()
+        render_reset_password_form(supabase)
     
     # Debug info (remove in production)
     if DEBUG_MODE:
