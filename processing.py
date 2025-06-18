@@ -16,15 +16,19 @@ class StreamlitAnalytics:
         logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
     
     @st.cache_data(ttl=3600) # Cache for 1 hour
-    def load_latest_bank_statement(_self):
-        """Load the latest processed bank statement JSON from storage and convert to DataFrame."""
+    def load_latest_bank_statement(_self, json_data: Optional[Dict] = None):
+        """
+        Load the latest processed bank statement JSON from storage or provided data
+        and convert to DataFrame.
+        """
         try:
-            if not os.path.exists(_self.json_file_path):
-                logging.warning("No bank statement JSON file found")
-                return pd.DataFrame()
-            
-            with open(_self.json_file_path, "r") as f:
-                json_data = json.load(f)
+            if json_data is None:
+                if not os.path.exists(_self.json_file_path):
+                    logging.warning("No bank statement JSON file found")
+                    return pd.DataFrame()
+                
+                with open(_self.json_file_path, "r") as f:
+                    json_data = json.load(f)
             
             df = _self._extract_tables_to_dataframe(json_data)
             if not df.empty:
@@ -54,7 +58,7 @@ class StreamlitAnalytics:
                 logging.debug(f"Loaded DataFrame columns: {df.columns.tolist()}")
                 return df
             
-            logging.warning("No bank statement JSON file found or no tables extracted.")
+            logging.warning("No bank statement JSON data provided or no tables extracted.")
             return pd.DataFrame()
         
         except Exception as e:
@@ -62,11 +66,14 @@ class StreamlitAnalytics:
             st.error(f"Error loading transaction data: {str(e)}")
             return pd.DataFrame()
     
-    def process_latest_json(self):
-        """Process the latest JSON bank statement and return a standardized DataFrame."""
-        return self.load_latest_bank_statement()
+    def process_latest_json(self, json_data: Optional[Dict] = None):
+        """
+        Process the latest JSON bank statement (from file or provided data)
+        and return a standardized DataFrame.
+        """
+        return self.load_latest_bank_statement(json_data)
     
-    def _extract_tables_to_dataframe(self, json_data):
+    def _extract_tables_to_dataframe(self, json_data: Dict):
         """Extract tables from JSON data and convert to DataFrame"""
         try:
             all_tables = []

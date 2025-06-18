@@ -84,32 +84,64 @@ class MLCategoryIntegration:
             try:
                 logger.debug(f"Querying MongoDB for {start_date} to {end_date}")
                 with st.spinner("Loading data from MongoDB..."):
+                    # MongoDB query for documents within the date range
+                    # Documents store 'period.start' and 'period.end' as strings in 'YYYY-MM-DD' format
                     query = {
                         "$or": [
                             {
                                 "period.start": {"$lte": end_date.strftime("%Y-%m-%d")},
                                 "period.end": {"$gte": start_date.strftime("%Y-%m-%d")}
                             },
-                            {"period.start": {"$exists": False}}
+                            # Include documents without a defined period (e.g., single transactions)
+                            {"period.start": {"$exists": False}} 
                         ]
                     }
                     documents = self.db_connection.find_documents(query=query, sort_by=[("uploaded_at", -1)])
-                    logger.debug(f"Found {len(documents)} MongoDB documents")
+                    logger.debug(f"Found {len(documents)} MongoDB documents matching date range query.")
                     
                     if documents:
                         for doc in documents:
-                            logger.debug(f"Processing MongoDB document: {list(doc.keys())}")
-                            df = processor.process_latest_json()  # Assumes this processes the document
+                            logger.debug(f"Processing MongoDB document: {doc.get('filename', 'N/A')}")
+                            # Assuming 'doc' contains the raw JSON structure of a bank statement
+                            # We need to pass the actual document content to processor for extraction
+                            # This might require a change in processor.process_latest_json or a new method
+                            # For now, let's assume processor can take a dict or has a way to load from a specific doc
+                            # If processor.process_latest_json() always reads from 'latest_bank_statement.json',
+                            # then we need to save the current doc to that file temporarily or refactor processor.
+                            
+                            # For demonstration, let's assume processor can take the document directly
+                            # This is a placeholder and might need actual implementation in processing.py
+                            # For now, we'll simulate by loading the latest_bank_statement.json if it exists
+                            # and then filtering it by the document's period if available.
+                            
+                            # A more robust solution would involve passing the 'doc' content to processor
+                            # or having processor fetch specific documents by ID.
+                            
+                            # Pass the document content directly to processor.process_latest_json
+                            # This assumes the document structure is compatible with what process_latest_json expects
+                            # (i.e., it contains 'elements' with 'table' categories and 'content.html')
+                            df = processor.process_latest_json(json_data=doc)
+                            
                             if not df.empty:
                                 df = self._standardize_columns(df)
                                 if 'date' in df.columns:
                                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
+                                    # Filter by the overall selected range, as the MongoDB query already handled document periods
                                     df = df[
                                         (df['date'] >= pd.to_datetime(start_date)) &
                                         (df['date'] <= pd.to_datetime(end_date))
                                     ]
                                 if not df.empty:
                                     transactions_df = pd.concat([transactions_df, df], ignore_index=True)
+                                    logger.debug(f"Added {len(df)} transactions from document to total.")
+                    
+                    # After processing all documents, apply the overall date range filter one last time
+                    if not transactions_df.empty:
+                        transactions_df = transactions_df[
+                            (transactions_df['date'] >= pd.to_datetime(start_date)) &
+                            (transactions_df['date'] <= pd.to_datetime(end_date))
+                        ]
+                        logger.debug(f"Final filter applied. Transactions after filter: {len(transactions_df)}")
                     
                     if not transactions_df.empty:
                         transactions_df = transactions_df.drop_duplicates().sort_values('date')
@@ -135,19 +167,19 @@ class MLCategoryIntegration:
         if (data_source == "Local File" and local_available) or (data_source == "Database Query" and transactions_df.empty and local_available):
             try:
                 with st.spinner("Loading data from local file..."):
-                    chunk_size = 1000
-                    chunks = []
-                    for chunk in processor.load_latest_bank_statement(chunk_size=chunk_size):
-                        if chunk is not None and not chunk.empty:
-                            chunk = self._standardize_columns(chunk)
-                            if 'date' in chunk.columns:
-                                chunk['date'] = pd.to_datetime(chunk['date'], errors='coerce')
-                                chunk = chunk[
-                                    (chunk['date'] >= pd.to_datetime(start_date)) &
-                                    (chunk['date'] <= pd.to_datetime(end_date))
-                                ]
-                            chunks.append(chunk)
-                            logger.debug(f"Processed chunk of {len(chunk)} rows. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
+                    # No chunking parameter for load_latest_bank_statement when loading from file
+                    temp_df = processor.load_latest_bank_statement() 
+                    
+                    if not temp_df.empty:
+                        temp_df = self._standardize_columns(temp_df)
+                        if 'date' in temp_df.columns:
+                            temp_df['date'] = pd.to_datetime(temp_df['date'], errors='coerce')
+                            temp_df = temp_df[
+                                (temp_df['date'] >= pd.to_datetime(start_date)) &
+                                (temp_df['date'] <= pd.to_datetime(end_date))
+                            ]
+                        transactions_df = pd.concat([transactions_df, temp_df], ignore_index=True)
+                        logger.debug(f"Processed {len(temp_df)} rows from local file. Memory: {process.memory_info().rss / 1024 / 1024:.2f} MB")
                     
                     if chunks:
                         transactions_df = pd.concat(chunks, ignore_index=True).drop_duplicates().sort_values('date')
