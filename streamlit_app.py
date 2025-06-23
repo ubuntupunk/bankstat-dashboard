@@ -93,7 +93,7 @@ else:
     # Page routing
     if current_page == "home":
         if not st.session_state.authenticated:
-            st.image("static/bankstatgreen.png", width=350, use_container_width=False)
+            st.image("static/bankstatgreen.png", width=350)
             st.title("Welcome to Bankstat")
             st.markdown(
                 """
