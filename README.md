@@ -1,4 +1,4 @@
-# BankStat Dashboard
+# BankStat
 
 A Streamlit app for analyzing bank statements and visualizing financial data.
 
@@ -8,12 +8,14 @@ The BankStat Dashboard is a Streamlit application designed to help users analyze
 
 ## Features
 
-- Upload bank statement data in JSON format
+- Upload PDF bank statement data
+- Upload CSV bank statement data directly to MongoDB
 - Process transactions and extract key financial information
 - Visualize financial data using interactive charts and graphs
 - Store and retrieve data from MongoDB
 - Calculate monthly average balance and other financial metrics
 - Display recent transactions with detailed information
+- Includes a Terms of Service page
 
 ## Installation
 
@@ -49,9 +51,11 @@ The BankStat Dashboard is a Streamlit application designed to help users analyze
 
 2. Open the app in your browser at the address displayed in the terminal (usually `http://localhost:8501`).
 
-3. Upload your bank statement data in JSON format using the file uploader.
+3. Navigate to the "Upload Bank Statement" tab. You can choose to:
+   - Upload a PDF bank statement, process it, and then save the extracted data to MongoDB.
+   - Upload a CSV bank statement directly to MongoDB.
 
-4. Click the "Save to Database" button to store the data in MongoDB.
+4. Click the appropriate "Save to Database" or "Upload CSV to Database" button to store the data in MongoDB.
 
 5. Explore the dashboard to visualize your financial data and analyze your transactions.
 

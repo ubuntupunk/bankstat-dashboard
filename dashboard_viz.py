@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from utils.utils import debug_write
 
 def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=None):
     """Create key financial metrics display"""
@@ -25,9 +26,9 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                         transactions_df = date_range_filtered
             
             # Debug: Show data summary
-            st.write("**Debug: Transaction Data Summary**")
+            debug_write("**Debug: Transaction Data Summary**")
             st.write(transactions_df[['debits', 'credits', 'balance']].describe())
-            st.write("**Debug: Sample Transactions**")
+            debug_write("**Debug: Sample Transactions**")
             st.write(transactions_df[['date', 'description', 'debits', 'credits', 'balance']].head())
             
             # Get transaction summary with the filtered data
@@ -48,18 +49,55 @@ def create_dashboard_metrics(analyzer, start_date, end_date, transactions_df=Non
                 avg_balance = transactions_df['balance'].mean() if 'balance' in transactions_df.columns else 0
 
             with col1:
-                st.metric("💰 Total Income", f"R {total_income:,.2f}")
+                # Total Income (no delta)
+                st.write(f"""
+                <div class="custom-metric-container">
+                    <div class="custom-metric-label">💰 Total Income</div>
+                    <div class="custom-metric-value">R {total_income:,.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col2:
-                st.metric("💸 Total Expenses", f"R {total_expenses:,.2f}")
+                # Total Expenses (no delta)
+                st.write(f"""
+                <div class="custom-metric-container">
+                    <div class="custom-metric-label">💸 Total Expenses</div>
+                    <div class="custom-metric-value">R {total_expenses:,.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col3:
+                # Net Flow (with delta)
                 net_flow = total_income - total_expenses
-                delta_label = "Positive" if net_flow > 0 else "Negative"
-                st.metric("📊 Net Flow", f"R {net_flow:,.2f}", delta=delta_label)
+                if net_flow < 0:
+                    st.write(f"""
+                    <div class="custom-metric-container">
+                        <div class="custom-metric-label">📊 Net Flow</div>
+                        <div class="custom-metric-value">R {net_flow:,.2f}</div>
+                        <div class="custom-metric-delta negative">
+                            <span class="arrow">↓</span> Negative (R {abs(net_flow):,.2f})
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.write(f"""
+                    <div class="custom-metric-container">
+                        <div class="custom-metric-label">📊 Net Flow</div>
+                        <div class="custom-metric-value">R {net_flow:,.2f}</div>
+                        <div class="custom-metric-delta positive">
+                            <span class="arrow">↑</span> Positive (R {net_flow:,.2f})
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             with col4:
-                st.metric("🏦 Avg Balance", f"R {avg_balance:,.2f}")
+                # Avg Balance (no delta)
+                st.write(f"""
+                <div class="custom-metric-container">
+                    <div class="custom-metric-label">🏦 Avg Balance</div>
+                    <div class="custom-metric-value">R {avg_balance:,.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
             with col1:
                 st.metric("💰 Total Income", "R 0.00")

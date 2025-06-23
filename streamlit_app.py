@@ -1,123 +1,149 @@
 import streamlit as st
-from datetime import datetime, timedelta
+import logging
 from config import Config
-from processing import StreamlitAnalytics
-from connection import DatabaseConnection
-from financial_analyzer import FinancialAnalyzer
-from pdf_processor import StreamlitBankProcessor
-from tabs.upload_tab import render_upload_tab
-from tabs.dashboard_tab import render_dashboard_tab
-from tabs.settings_tab import render_settings_tab
-from tabs.tools_tab import render_tools_tab
-from propelauth import auth # Import the auth object from propelauth.py
+from propelauth_utils import auth
+from utils.utils import DEBUG_MODE, debug_write
+from components.footer import display_footer
 
-# Configure page
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+logger.debug("Initializing Streamlit app")
+
+# Configure page - This must be the first Streamlit command
 st.set_page_config(
-    page_title="Bankstat Dashboard",
+    page_title="Bankstat",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Import CSS
-with open("styles.css") as f:
-    css = f.read()
-st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+try:
+    with open("styles.css") as f:
+        css = f.read()
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    st.warning("styles.css not found. Some styling may be missing.")
 
 # Initialize configuration
 config = Config()
 missing_secrets = config.validate_config()
 
-def main():
-    if missing_secrets:
-        st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
-        return
+# Initialize session state for authentication
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'user' not in st.session_state:
+    st.session_state.user = None
 
-    # Handle OAuth2 callback
-    query_params = st.query_params
-    auth_code = query_params.get("code")
-    returned_state = query_params.get("state")
+# Get current page from query params
+query_params = st.query_params
+current_page = query_params.get("page", ["home"])[0]
+
+# Navigation
+pages = {
+    "home": "Home",
+    "dashboard": "Dashboard"
+}
+
+# Authentication check
+def check_auth():
+    """Check if user is authenticated"""
+    if not st.session_state.authenticated or not st.session_state.user:
+        if current_page != "home":
+            st.query_params["page"] = "home"
+            st.rerun()
+        return False
+    return True
+
+# Handle logout
+if query_params.get("logout"):
+    if st.session_state.authenticated and st.session_state.user:
+        auth.log_out(st.session_state.user.get('user_id'))
+    st.session_state.authenticated = False
+    st.session_state.user = None
+    st.query_params["page"] = "home"
+    st.query_params.pop("logout", None)
+    st.rerun()
+
+# Main app logic
+if DEBUG_MODE:
+    st.info("Debug mode is ON.")
+else:
+    st.caption("Debug mode is OFF.")
+
+if missing_secrets:
+    st.error(f"⚠️ Missing secrets: {', '.join(missing_secrets)}")
+else:
+    # Sidebar navigation (only show when authenticated)
+    if st.session_state.authenticated:
+        with st.sidebar:
+            st.title("Navigation")
+            for page_id, page_name in pages.items():
+                if st.button(page_name, key=f"nav_{page_id}"):
+                    st.query_params["page"] = page_id
+                    st.rerun()
+            
+            if st.button("Logout"):
+                st.query_params["logout"] = "true"
+                st.rerun()
     
-    if auth_code and returned_state:
-        expected_state = st.session_state.get("oauth_state")
-        if not expected_state or returned_state[0] != expected_state:
-            st.error("CSRF attack detected or invalid state parameter. Please try logging in again.")
-            st.session_state.clear()
-            st.experimental_set_query_params()
-            st.experimental_rerun()
-            return
-
-        user_id = auth.exchange_code_for_user_id(auth_code[0])
-        if user_id:
-            st.session_state["user_id"] = user_id
-            # Clear query parameters and state from session to prevent re-processing
-            del st.session_state["oauth_state"]
-            st.experimental_set_query_params() # Clears all query params
-            st.experimental_rerun() # Rerun to update the UI
-            return # Stop execution until rerun completes
+    # Page routing
+    if current_page == "home":
+        if not st.session_state.authenticated:
+            st.image("static/bankstatgreen.png", width=350)
+            st.title("Welcome to Bankstat")
+            st.markdown(
+                """
+                <style>
+                    .stApp {
+                        background-color: #f0f2f6; /* Light grey background */
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                    }
+                    .stApp > header {
+                        display: none; /* Hide Streamlit header */
+                    }
+                    .stApp > footer {
+                        display: none; /* Hide Streamlit footer */
+                    }
+                    .stButton > button {
+                        background-color: #2E8B57;
+                        color: white;
+                        padding: 0.75rem 2rem;
+                        border-radius: 0.5rem;
+                        border: none;
+                        font-size: 1.2rem;
+                        cursor: pointer;
+                        transition: background-color 0.3s ease;
+                    }
+                    .stButton > button:hover {
+                        background-color: #3CB371; /* Lighter green on hover */
+                    }
+                    h1 {
+                        color: #2E8B57;
+                        font-size: 2.5rem;
+                        margin-bottom: 1rem;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            if st.button("Login"):
+                st.switch_page("pages/login.py")
         else:
-            st.error("Failed to exchange authorization code for user ID.")
-            st.session_state.clear() # Clear session state on failure
-            st.experimental_set_query_params() # Clear query params
-            st.experimental_rerun() # Rerun to clear error
-            return
-    elif auth_code or returned_state: # If only one of them is present, it's an incomplete or malformed callback
-        st.error("Incomplete authentication callback. Please try logging in again.")
-        st.session_state.clear()
-        st.experimental_set_query_params()
-        st.experimental_rerun()
-        return
+            st.switch_page("pages/dashboard.py")
+    
+    elif current_page == "dashboard":
+        if check_auth():
+            st.switch_page("pages/dashboard.py")
+    
+    else:
+        st.switch_page("pages/404.py")
 
-    # Authentication with PropelAuth
-    user_id = st.session_state.get("user_id")
-    if user_id is None:
-        st.warning("Please log in to access the dashboard.")
-        st.link_button("Login with PropelAuth", auth.get_login_url())
-        st.stop()
-
-    user = auth.get_user(user_id)
-    if user is None:
-        st.error('Unauthorized. Please log in again.')
-        st.session_state.clear() # Clear session state if user is unauthorized
-        st.experimental_rerun() # Rerun to reflect logout
-        return # Stop execution until rerun completes
-
-    # Sidebar
-    with st.sidebar:
-        st.image("bankstatgreen.png", use_container_width=True)
-        st.header("User")
-        st.text(f"Logged in as {user.email} (ID: {user.user_id})")
-        st.link_button('Account', auth.get_account_url(), use_container_width=True)
-        st.button('Logout', on_click=auth.log_out, args=(user.user_id,))
-        st.header("Navigation")
-        tab_selection = st.radio(
-            "Choose Action:",
-            ["📊 View Dashboard", "📁 Upload & Process", "🧮 Tools", "⚙️ Settings"]
-        )
-        st.header("Date Range")
-        col1, col2 = st.columns(2)
-        with col1:
-            start_date = st.date_input("From", datetime.now() - timedelta(days=30))
-        with col2:
-            end_date = st.date_input("To", datetime.now())
-
-    # Header
-    st.markdown(f'<h1 class="main-header">🏦 Bankstat Dashboard - Welcome {user.email}</h1>', unsafe_allow_html=True)
-
-    # Initialize components
-    processor = StreamlitAnalytics()
-    db_connection = DatabaseConnection()
-    pdf_processor = StreamlitBankProcessor()
-    analyzer = FinancialAnalyzer(base_analyzer=processor)
-
-    # Render selected tab
-    if tab_selection == "📁 Upload & Process":
-        render_upload_tab(pdf_processor, processor, db_connection)
-    elif tab_selection == "📊 View Dashboard":
-        render_dashboard_tab(analyzer, processor, db_connection, start_date, end_date)
-    elif tab_selection == "🧮 Tools":
-        render_tools_tab()
-    elif tab_selection == "⚙️ Settings":
-        render_settings_tab(processor, pdf_processor, analyzer, db_connection)
-
-if __name__ == "__main__":
-    main()
+display_footer()

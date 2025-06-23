@@ -1,4 +1,4 @@
-# BankStat Dashboard Planning
+# BankStat App Planning
 
 ## Project Overview
 

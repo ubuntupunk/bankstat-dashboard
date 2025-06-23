@@ -1,8 +1,37 @@
 ### 2025-06-02
-- [x]Handle 'StreamlitBankProcessor' object has no attribute 'process_latest_json' error. (Completed)
-- [x]Handle cases where no bank statement JSON objects exist in the database. (Completed)
-- [x]Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
-- [ ]Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
+- [x] Handle 'StreamlitBankProcessor' object has no attribute 'process_latest_json' error. (Completed)
+- [x] Handle cases where no bank statement JSON objects exist in the database. (Completed)
+- [x] Corrected 'FinancialAnalyzer' object has no attribute 'process_latest_json' error in Recent Transactions section. (Completed)
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='service_filter'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='up_3'.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='service_filter'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='up_3'.
+- [x] in our leaderboard tab: There are multiple plotly_chart elements with the same auto-generated ID.
+- [x] in our leaderboard tab: There are multiple identical forms with key='add_service_userfi_services'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='service_filter'.
+- [x] in our leaderboard tab: There are multiple elements with the same key='up_3'.
+- [x] in our leaderboard tab: There are multiple plotly_chart elements with the same auto-generated ID.
+- [x] Please place the appropriate emoji alongside tab entry in our st.tabs array in dashboard_tab.py
+- [x] Please add appropriate emojis to the tabs array in tools_tab.py
+- [x] Our leader_board_tab.py is more than the maximum 500 lines, we need to break it up into four or five manageble units inside the leader dir.
+- [x] Our dashboard tab imports all its tabs except for tab1. We should move tab1 into an import file to assist overall management.
+- [x] Our goals_tab.py needs to be broken up into manageble units.
+- [x] our predictions tab needs to correctly use mongodb via connection.py and the correct fallback strategy. We see: MongoDB load failed: Collection objects do not implement truth value testing or bool(). Please compare with None instead: collection is not None
+
+📱 Using fallback data source...
+
+JSON load failed: All arrays must be of the same length (2025-06-16)
+- [ ] Compare 'streamlit_app.py' and 'app.py' for PDF processing and data display, specifically addressing missing balance and running totals.
+- [ ] on streamlit-cloud branch After password reset, failed to return to login page https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=mEPKtc2ENywcKAa4hBCLbhsvBYgzkp&nonce=wHrj4PeKNNnrYGp6i456&code_challenge=5bYtaMRjzgBswOtVt0MK32Q0bogpid58HmAkKcAM5tM&code_challenge_method=S256
+
+- [ ] on streamlit-cloud branch After login flow, failed to login https://35258265.propelauthtest.com/propelauth/oauth/authorize?response_type=code&client_id=3464455f14962ddf38e620b643c7f85a&redirect_uri=http%3A%2F%2Flocalhost%3A8501%2Foauth2callback&scope=openid+email+profile&state=UhzY2V1OAFbeJCixK6Cs6Oc0FdzCqJ&nonce=Fd5bwewLt97sSDlORlTf&code_challenge=CeixcfcPgiPSPenV4lvneknOliPGD5gsafn-kJMc07w&code_challenge_method=S256
+
+- [x] Our problem with our sidebar date range not passing values to the children tabs occurred in commit 5dbfa1e when we introduced conditional logic in dashboard.py page to render the date range. Please investigate what is going on here
 
 ### Plan for Streamlit App Improvements (2025-06-02)
 
@@ -29,6 +58,16 @@
 
 This plan aims to restore the full functionality of data persistence and correct display of financial metrics, including balances and running totals, by ensuring the Streamlit app properly integrates with the `FinancialAnalyzer` and MongoDB.
 
+# Please fix
+[x] In Dashboard side panel, on first login. The widget with key "dashboard_start_date" was created with a default value but also had its value set via the Session State API. I need to refresh page for it to show up.
+
+- [x] Our app needs Terms of Service tos.py and Privacy privacy.py pages (2025-06-11)
+- [x] Add CSV upload functionality to `tabs/upload_tab.py` to directly send data to MongoDB (2025-06-11)
+- [x] Our dashboard_tab.py needs to be tabbed. Current content ie Key Metrics should be a Key metrics tab. Add a new Services tab services_tab.py, this will allow our user to purchase services such as banking and insurance, by comparing the best rates available in the market. (2025-06-11)
+
+### Discovered During Work
+- [ ] Enhance pre-login page in `streamlit_app.py` with `bankstatgreen.png` and improved CSS (2025-06-11)
+
 # Completed
 
 - [x] Fixed unterminated string literal in 'financial_analyzer.py'
@@ -37,5 +76,4 @@ This plan aims to restore the full functionality of data persistence and correct
 - [x] Resolved "DataFrame has column names of mixed type" warning in 'streamlit_app.py'
 - [x] Ensured MongoDB upload debug messages are visible in 'streamlit_app.py'
 - [x] Add streamlit caching methods to persist data and db connections. Eg @st.cache_data (2025-06-02)
-- [x] Add .python service config with a run command for heroku/koyeb deployment (2025-06-04)
-- [x] Added explicit secret validation in 'propelauth.py' to prevent TypeError due to missing authentication API key on Streamlit Cloud. (2025-06-05)
+[x] Add a [DEBUG] debug=on special streamlit secret, and make our debug st.write statements toggle on or off.
