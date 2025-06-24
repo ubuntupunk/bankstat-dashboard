@@ -1,0 +1,311 @@
+[     UTC     ] Logs for bankstat.streamlit.app/
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+[11:05:47] 🚀 Starting up repository: 'bankstat-dashboard', branch: 'streamlit-cloud', main module: 'streamlit_app.py'
+
+[11:05:47] 🐙 Cloning repository...
+
+[11:05:48] 🐙 Cloning into '/mount/src/bankstat-dashboard'...
+Warning: Permanently added the ED25519 host key for IP address '140.82.116.3' to the list of known hosts.
+
+[11:05:48] 🐙 Cloned repository!
+
+[11:05:48] 🐙 Pulling code changes from Github...
+
+[11:05:49] 📦 Processing dependencies...
+
+──────────────────────────────────────── uv ───────────────────────────────────────────
+
+Using uv pip install.
+
+Using Python 3.13.5 environment at /home/adminuser/venv
+
+  × No solution found when resolving dependencies:
+
+  ╰─▶ Because only the following versions of tensorflow-cpu are available:
+
+          tensorflow-cpu<=2.8.4
+
+          tensorflow-cpu>=2.9.0,<=2.9.3
+
+          tensorflow-cpu>=2.10.0,<=2.10.1
+
+          tensorflow-cpu>=2.11.0,<=2.11.1
+
+          tensorflow-cpu>=2.12.0,<=2.12.1
+
+          tensorflow-cpu>=2.13.0,<=2.13.1
+
+          tensorflow-cpu>=2.14.0,<=2.14.1
+
+          tensorflow-cpu>=2.15.0,<=2.15.1
+
+          tensorflow-cpu>=2.16.1,<=2.16.2
+
+          tensorflow-cpu>=2.17.0,<=2.17.1
+
+          tensorflow-cpu>=2.18.0,<=2.18.1
+
+          tensorflow-cpu>=2.19.0
+
+      and tensorflow-cpu<=2.1.0 has no wheels with a matching Python
+
+      implementation tag, we can conclude that all of:
+
+          tensorflow-cpu<2.1.0
+
+          tensorflow-cpu>2.8.4,<2.9.0
+
+          tensorflow-cpu>2.9.3,<2.10.0
+
+          tensorflow-cpu>2.10.1,<2.11.0
+
+          tensorflow-cpu>2.11.1,<2.12.0
+
+          tensorflow-cpu>2.12.1,<2.13.0
+
+          tensorflow-cpu>2.13.1,<2.14.0
+
+          tensorflow-cpu>2.14.1,<2.15.0
+
+          tensorflow-cpu>2.15.1,<2.16.1
+
+          tensorflow-cpu>2.16.2,<2.17.0
+
+          tensorflow-cpu>2.17.1,<2.18.0
+
+          tensorflow-cpu>2.18.1,<2.19.0
+
+       cannot be used.
+
+      And because all of:
+
+          tensorflow-cpu>=2.1.1,<=2.8.4
+
+          tensorflow-cpu>=2.9.0,<=2.9.3
+
+          tensorflow-cpu>=2.10.0,<=2.10.1
+
+          tensorflow-cpu>=2.11.0,<=2.11.1
+
+          tensorflow-cpu>=2.12.0,<=2.12.1
+
+          tensorflow-cpu>=2.13.0,<=2.13.1
+
+          tensorflow-cpu>=2.14.0,<=2.14.1
+
+          tensorflow-cpu>=2.15.0,<=2.15.1
+
+          tensorflow-cpu>=2.16.1,<=2.16.2
+
+          tensorflow-cpu>=2.17.0,<=2.17.1
+
+          tensorflow-cpu>=2.18.0,<=2.18.1
+
+          tensorflow-cpu>=2.19.0
+
+      have no wheels with a matching Python ABI tag and you require
+
+      tensorflow-cpu, we can conclude that your requirements are
+
+      unsatisfiable.
+
+      hint: Pre-releases are available for tensorflow-cpu in the requested
+
+      range (e.g., 2.19.0rc0), but pre-releases weren't enabled (try:
+
+      `--prerelease=allow`)
+
+Checking if Streamlit is installed
+
+Installing rich for an improved exception logging
+
+Using uv pip install.
+
+Using Python 3.13.5 environment at /home/adminuser/venv
+
+Resolved 4 packages in 117ms
+
+Prepared 4 packages in 120ms
+
+Installed 4 packages in 13ms
+
+ + markdown-it-py==3.0.0
+
+ + mdurl[2025-06-23 11:05:51.208063] ==0.1.2
+
+ + pygments==2.19.2
+
+ + rich==14.0.0
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────── pip ───────────────────────────────────────────
+
+Using standard pip install.
+
+Collecting streamlit>=1.28.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 1))
+
+  Downloading streamlit-1.46.0-py3-none-any.whl.metadata (9.0 kB)
+
+Collecting pandas>=1.5.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 2))
+
+  Downloading pandas-2.3.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (91 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 91.2/91.2 kB 4.2 MB/s eta 0:00:00[2025-06-23 11:05:52.848286] 
+
+Collecting plotly>=5.15.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 3))
+
+  Downloading plotly-6.1.2-py3-none-any.whl.metadata (6.9 kB)
+
+Collecting plotly.express>=0.4.1 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 4))
+
+  Downloading plotly_express-0.4.1-py2.py3-none-any.whl.metadata (1.7 kB)
+
+Collecting requests>=2.31.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 5))
+
+  Downloading requests-2.32.4-py3-none-any.whl.metadata (4.9 kB)
+
+Collecting python-dotenv>=1.0.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 6))
+
+  Downloading python_dotenv-1.1.0-py3-none-any.whl.metadata (24 kB)
+
+Collecting pymongo>=4.5.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 7))
+
+  Downloading pymongo-4.13.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (22 kB)
+
+Collecting lxml>=5.4.0 (from -r /mount/src/bankstat-dashboard/requirements.txt (line 9))
+
+  Downloading lxml-5.4.0-cp313-cp313-manylinux_2_28_x86_64.whl.metadata (3.5 kB)
+
+Collecting psycopg2-binary (from -r /mount/src/bankstat-dashboard/requirements.txt (line 10))
+
+  Downloading psycopg2_binary-2.9.10-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+
+Collecting streamlit-authenticator (from -r /mount/src/bankstat-dashboard/requirements.txt (line 11))
+
+  Downloading streamlit_authenticator-0.4.2-py3-none-any.whl.metadata (30 kB)
+
+Collecting streamlit-mermaid (from -r /mount/src/bankstat-dashboard/requirements.txt (line 12))
+
+  Downloading streamlit_mermaid-0.3.0-py3-none-any.whl.metadata (948 bytes)
+
+Collecting propelauth_py (from -r /mount/src/bankstat-dashboard/requirements.txt (line 13))
+
+  Downloading propelauth-py-4.2.8.tar.gz (30 kB)
+
+  Installing build dependencies: started
+
+  Installing build dependencies: finished with status 'done'
+
+  Getting requirements to build wheel: started
+
+  Getting requirements to build wheel: finished with status 'done'
+
+  Preparing metadata (pyproject.toml): started
+
+  Preparing metadata (pyproject.toml): finished with status 'done'
+
+Collecting Authlib (from -r /mount/src/bankstat-dashboard/requirements.txt (line 14))
+
+  Downloading authlib-1.6.0-py2.py3-none-any.whl.metadata (4.1 kB)
+
+Collecting scikit-learn (from -r /mount/src/bankstat-dashboard/requirements.txt (line 15))
+
+  Downloading scikit_learn-1.7.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (17 kB)
+
+ERROR: Ignored the following versions that require a different python version: 0.55.2 Requires-Python <3.5
+
+ERROR: Could not find a version that satisfies the requirement tensorflow-cpu (from versions: none)
+
+ERROR: No matching distribution found for tensorflow-cpu
+
+[notice] A new release of pip is available: 24.0 -> 25.1.1
+
+[notice] To update, run: pip install --upgrade pip
+
+Checking if Streamlit is installed
+
+Installing rich for an improved exception logging
+
+Using standard pip install.
+
+Collecting rich>=10.14.0
+
+  Downloading rich-14.0.0-py3-none-any.whl.metadata (18 kB)
+
+Collecting markdown-it-py>=2.2.0 (from rich>=10.14.0)
+
+  Downloading markdown_it_py-3.0.0-py3-none-any.whl.metadata (6.9 kB)
+
+Collecting pygments<3.0.0,>=2.13.0 (from rich>=10.14.0)
+
+  Downloading pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.14.0)
+
+  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+
+Downloading rich-14.0.0-py3-none-any.whl (243 kB)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 243.2/243.2 kB 11.8 MB/s eta 0:00:00[2025-06-23 11:05:58.912852] 
+
+Downloading markdown_it_py-3.0.0-py3-none-any.whl (87 kB)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.5/87.5 kB 127.9 MB/s eta 0:00:00[2025-06-23 11:05:58.926492] 
+
+Downloading pygments-2.19.2-py3-none-any.whl (1.2 MB)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 81.8 MB/s eta 0:00:00[2025-06-23 11:05:58.954162] 
+
+Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+
+Installing collected packages: pygments, mdurl, markdown-it-py, rich
+
+  Attempting uninstall: pygments
+
+    Found existing installation: Pygments 2.19.2
+
+    Uninstalling Pygments-2.19.2:
+
+      Successfully uninstalled Pygments-2.19.2
+
+  Attempting uninstall: mdurl
+
+    Found existing installation: mdurl 0.1.2
+
+    Uninstalling mdurl-0.1.2:
+
+      Successfully uninstalled mdurl-0.1.2
+
+  Attempting uninstall: markdown-it-py
+
+    Found existing installation: markdown-it-py 3.0.0
+
+    Uninstalling markdown-it-py-3.0.0:
+
+      Successfully uninstalled markdown-it-py-3.0.0
+
+  Attempting uninstall: rich
+
+    Found existing installation: rich 14.0.0
+
+    Uninstalling rich-14.0.0:
+
+      Successfully uninstalled rich-14.0.0
+
+Successfully installed markdown-it-py-3.0.0 mdurl-0.1.2 pygments-2.19.2 rich-14.0.0
+
+[notice] A new release of pip is available: 24.0 -> 25.1.1
+
+[notice] To update, run: pip install --upgrade pip
+
+────────────────────────────────────────────────────────────────────────────────────────
+
+[11:06:01] ❗️ installer returned a non-zero exit code
+
+[11:06:01] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
+
+streamlit-cloud
+ubuntupunk/bankstat-dashboard/streamlit-cloud/streamlit_app.py
